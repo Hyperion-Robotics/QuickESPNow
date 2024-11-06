@@ -28,7 +28,7 @@ To install the ESP_NOW_HR library, follow these steps:
 2. Initialize an `ESP_NOW_HR` object with desired communication parameters.
 3. Note that the Serial.begin() must always be called for the library to work before the object initialization.
 4. Call  the `begin()` method to start the protocol.
-5. Call the apropriate `addPeer()` method to give the information of the peer.
+5. Call the appropriate `addPeer()` method to give the information of the peer.
 
 ```cpp
 #include <QuickESPNow.h>
@@ -164,13 +164,13 @@ void loop() {
 ### Enhancements
 - **Improved Peer Management**: Fixed issues with adding multiple peers, ensuring stable and reliable communication.
 - **Generic Send Function**: Refactored the `Send` function to be more flexible, allowing any data type to be sent using a single function (`Send`) instead of separate functions for each type.
-- **Custom Queue Implementation**: Introduced a dynamic message queue for storing messages, optimizing memory usage.
+- **Custom Queue Implementation**: Introduced a dynamic message queue for storing messages, and optimizing memory usage.
 - **User-defined Callbacks**: Added functionality for users to set their own custom data send and receive functions, increasing flexibility.
 - **Encryption Enhancements**: Fixed encryption problems and added support for both PMK and LMK keys to improve security.
 - **Support for AP and STA Modes**: Enhanced the class to support both Station (STA) and Access Point (AP) modes, which were previously limited to STA only.
-- **Channel Communication Fixes**: Correctly implemented message sending across different channels, not just channel. 1.
+- **Channel Communication Fixes**: Correctly implemented message sending across different channels, not just channel 1.
 - **Board Support**: Added esp32 `2.0.27` board version compatibility together with the `3.x.x` board versions.
-- **Sending Types**: Introduced costum struct message communication.
+- **Sending Types**: Introduced custom struct message communication.
 
 ### Bug Fixes
 - Resolved issues with sending messages to peers on channels other than channel 1.
@@ -178,7 +178,7 @@ void loop() {
 
 ## Warnings
 
-This library can only work with theese board versions of the esp32 board manager in arduino:
+This library can only work with these board versions of the esp32 board manager in arduino:
 - `3.x.x`
 - `2.0.17`
 
@@ -186,7 +186,7 @@ This library can only work with theese board versions of the esp32 board manager
 
 MIT License
 
-Copyright (c) 2024 GEORGE PAPAMICHAIL
+Copyright (c) 2024 HYPERION ROBOTICS
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
