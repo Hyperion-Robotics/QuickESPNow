@@ -40,6 +40,7 @@ void QuickESPNow::setRecvMsg(msg_struct msg){
 void QuickESPNow::OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status){
     Serial.print("\r\nLast Packet Send Status:\t");
     Serial.println(status == ESP_NOW_SEND_SUCCESS ? "Delivery Success" : "Delivery Fail");
+    QuickESPNow::send_success = (status == ESP_NOW_SEND_SUCCESS);
 }
 
 #if ESP_ARDUINO_VERSION >= ESP_ARDUINO_VERSION_VAL(3, 0, 0)
@@ -56,6 +57,8 @@ void QuickESPNow::OnDataRecv(const uint8_t *mac_addr, const uint8_t *incomingDat
 }
 #endif
 uint8_t QuickESPNow::Local_MAC[MAC_LENGTH];
+
+bool QuickESPNow::send_success = false;
 
 Msg_Queue QuickESPNow::recieved_msgs;
 /***********************************************************************/
