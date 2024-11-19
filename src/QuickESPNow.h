@@ -297,19 +297,19 @@ bool QuickESPNow::Send(const int id, const T msg) {
     }
     
     if(!id_exists){
-        Serial.println("[Fail] Unknown esp id");
+        // Serial.println("[Fail] Unknown esp id");
         return false;
     }
 
     // Check if the peer exists
     if (!esp_now_is_peer_exist(this->Peers_MAC[key])) {
-        Serial.println("[Error] Peer does not exist");
+        // Serial.println("[Error] Peer does not exist");
         return false;
     }
 
     esp_now_peer_info_t temp_peer;
     if (esp_now_get_peer(this->Peers_MAC[key], &temp_peer) != ESP_OK) {
-        Serial.println("[Error] Failed to get peer info");
+        // Serial.println("[Error] Failed to get peer info");
         return false;
     }
 
@@ -351,7 +351,7 @@ bool QuickESPNow::Send(const int id, const T msg) {
 
 
     bool result = esp_now_send(this->Peers_MAC[key], (uint8_t*) &msg_to_sent, sizeof(msg_to_sent));
-    this->send_success ? Serial.println("Successfully sent msg") : Serial.println("Failed to send msg");
+    // this->send_success ? Serial.println("Successfully sent msg") : Serial.println("Failed to send msg");
     return this->send_success;
 }
 
@@ -368,19 +368,19 @@ bool QuickESPNow::Send(const int id, const T* msg, int size) {
     }
     
     if(!id_exists){
-        Serial.println("[Fail] Unknown esp id");
+        // Serial.println("[Fail] Unknown esp id");
         return false;
     }
 
     // Check if the peer exists
     if (!esp_now_is_peer_exist(this->Peers_MAC[key])) {
-        Serial.println("[Error] Peer does not exist");
+        // Serial.println("[Error] Peer does not exist");
         return false;
     }
 
     esp_now_peer_info_t temp_peer;
     if (esp_now_get_peer(this->Peers_MAC[key], &temp_peer) != ESP_OK) {
-        Serial.println("[Error] Failed to get peer info");
+        // Serial.println("[Error] Failed to get peer info");
         return false;
     }
 
@@ -444,7 +444,7 @@ bool QuickESPNow::Send(const int id, const T* msg, int size) {
     
 
     bool result = esp_now_send(this->Peers_MAC[key], (uint8_t*) &msg_to_sent, sizeof(msg_to_sent));
-    this->send_success ? Serial.println("Successfully sent msg") : Serial.println("Failed to send msg");
+    // this->send_success ? Serial.println("Successfully sent msg") : Serial.println("Failed to send msg");
 
     if(msg_to_sent.type == INT) free(msg_to_sent.msg.i_ptr);
     else if(msg_to_sent.type == SHORT) free(msg_to_sent.msg.s_ptr);
