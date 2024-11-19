@@ -38,8 +38,8 @@ void QuickESPNow::setRecvMsg(msg_struct msg){
 }
 
 void QuickESPNow::OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status){
-    Serial.print("\r\nLast Packet Send Status:\t");
-    Serial.println(status == ESP_NOW_SEND_SUCCESS ? "Delivery Success" : "Delivery Fail");
+    // Serial.print("\r\nLast Packet Send Status:\t");
+    // Serial.println(status == ESP_NOW_SEND_SUCCESS ? "Delivery Success" : "Delivery Fail");
     QuickESPNow::send_success = (status == ESP_NOW_SEND_SUCCESS);
 }
 
@@ -117,7 +117,7 @@ QuickESPNow::QuickESPNow(const COMMUNICATION communication, const int peers_crow
 /***************************************/
 
 /**************Starting of the espnow communication**************/
-void QuickESPNow::addPeer(int id, uint8_t* Peers_MAC, int Ch, wifi_interface_t mode){
+bool QuickESPNow::addPeer(int id, uint8_t* Peers_MAC, int Ch, wifi_interface_t mode){
 
     if(Ch < 0 || 13 < Ch){
         this->setup_errors[this->error_counter] = CHANNEL_OUT_OF_RANGRE; 
@@ -137,10 +137,10 @@ void QuickESPNow::addPeer(int id, uint8_t* Peers_MAC, int Ch, wifi_interface_t m
 
     // Add receiver as peer        
     if (esp_now_add_peer(&peerInfo) != ESP_OK) {
-        Serial.println("[Error] Failed to add peer");
-        return;
+        // Serial.println("[Error] Failed to add peer");
+        return false;
     }else{
-        Serial.println("[SUCCESS] peer has been added succesfuly");
+        return true;
     }
 }
 
@@ -148,7 +148,7 @@ void QuickESPNow::addPeer(int id, uint8_t* Peers_MAC, int Ch, wifi_interface_t m
 
 
 
-void QuickESPNow::addPeer(int id, uint8_t* Peers_MAC, int Ch, wifi_interface_t mode, char* LMK_keys_array){
+bool QuickESPNow::addPeer(int id, uint8_t* Peers_MAC, int Ch, wifi_interface_t mode, char* LMK_keys_array){
     if(Ch < 0 || 13 < Ch){
         this->setup_errors[this->error_counter] = CHANNEL_OUT_OF_RANGRE; 
         this->error_counter++;
@@ -173,29 +173,31 @@ void QuickESPNow::addPeer(int id, uint8_t* Peers_MAC, int Ch, wifi_interface_t m
 
     // Add receiver as peer        
     if (esp_now_add_peer(&peerInfo) != ESP_OK){
-        Serial.println("Failed to add peer");
-        return;
+        // Serial.println("Failed to add peer");
+        return false;
     }else{
-        Serial.println("[SUCCESS] peer has been added succesfuly");
+        // Serial.println("[SUCCESS] peer has been added succesfuly");
+        return true;
     }
 }
 
 
-void QuickESPNow::addPeer(int id, esp_now_peer_info_t* Peer){
+bool QuickESPNow::addPeer(int id, esp_now_peer_info_t* Peer){
     this->ids[this->id_counter] = id;
     memcpy(this->Peers_MAC[this->id_counter], Peer->peer_addr, MAC_LENGTH);
     this->id_counter++;
 
     // Add receiver as peer        
     if (esp_now_add_peer(Peer) != ESP_OK){
-        Serial.println("Failed to add peer");
-        return;
+        // Serial.println("Failed to add peer");
+        return false;
     }else{
-        Serial.println("[SUCCESS] peer has been added succesfuly");
+        // Serial.println("[SUCCESS] peer has been added succesfuly");
+        return true;
     }
 }
 
-void QuickESPNow::begin(){
+bool QuickESPNow::begin(){
     // Set the WiFi module to station mode
     WiFi.mode(WIFI_STA);
 
@@ -221,7 +223,7 @@ void QuickESPNow::begin(){
 
 
     // Read the old MAC
-    Serial.print("[OLD] ESP32 Board MAC Address:  ");
+    // Serial.print("[OLD] ESP32 Board MAC Address:  ");
     Serial.println(WiFi.macAddress());
 
     delay(100);
@@ -231,21 +233,23 @@ void QuickESPNow::begin(){
 
     delay(100);
     
-    Serial.print("\r[NEW] ESP32 Board MAC Address:  ");
+    // Serial.print("\r[NEW] ESP32 Board MAC Address:  ");
     Serial.println(WiFi.macAddress());
 
     // Verify that the new MAC is set correctly
 
     if (!WiFi.macAddress().equals(getMACtoSTRING(this->Local_MAC))) {
-        Serial.println("\r[Error] Failed to change MAC");
+        // Serial.println("\r[Error] Failed to change MAC");
         this->setup_errors[this->error_counter] = NEW_MAC_INITIALIZATION_ERROR;
         this->error_counter++;
+        return false;
     }
 
     if(this->Encryption){
         esp_now_set_pmk((uint8_t *)this->PMK_key);
     }
     delay(100);
+    return true;
 }
 /**********************************************************/
 
@@ -261,18 +265,36 @@ void QuickESPNow::setChannel(int ch){
 /**************Checking for istalisation errors**************/
 bool QuickESPNow::FAIL_CHECK() {
     if(this->error_counter == 0) {
-        Serial.println("\r[SUCCESS] THERE WERE NO INITIALIZATION ERROR");
+        // Serial.println("\r[SUCCESS] THERE WERE NO INITIALIZATION ERROR");
         return false;
     }
-    for(int i = 0; i < this->error_counter; i++) {
-        if(this->setup_errors[i]==ESP_NOW_INITIALIZATION_ERROR) Serial.println("\r[Error] initializing ESP-NOW");
-        else if(this->setup_errors[i]==ESP_NOW_COMMUNICATION_SETUP_ERROR ) Serial.println("\r[Error] in the consructors communication parameter");
-        else if(this->setup_errors[i]==CHANNEL_OUT_OF_RANGRE) Serial.println("\r[Error] in the value of the channel (channel ranges 0-13)");        
-        else if(this->setup_errors[i]==NEW_MAC_INITIALIZATION_ERROR) Serial.println("\r[Error] setting new MAC address");
-        else if(this->setup_errors[i]==ADD_PEER_INITIALIZATION_ERROR) Serial.println("\r[Error] adding peer");
-        else if(this->setup_errors[i]==MEMORY_ALLOCATION_ERROR) Serial.println("\r[Error] allocating memory");
+    // for(int i = 0; i < this->error_counter; i++) {
+    //     if(this->setup_errors[i]==ESP_NOW_INITIALIZATION_ERROR) Serial.println("\r[Error] initializing ESP-NOW");
+    //     else if(this->setup_errors[i]==ESP_NOW_COMMUNICATION_SETUP_ERROR ) Serial.println("\r[Error] in the consructors communication parameter");
+    //     else if(this->setup_errors[i]==CHANNEL_OUT_OF_RANGRE) Serial.println("\r[Error] in the value of the channel (channel ranges 0-13)");        
+    //     else if(this->setup_errors[i]==NEW_MAC_INITIALIZATION_ERROR) Serial.println("\r[Error] setting new MAC address");
+    //     else if(this->setup_errors[i]==ADD_PEER_INITIALIZATION_ERROR) Serial.println("\r[Error] adding peer");
+    //     else if(this->setup_errors[i]==MEMORY_ALLOCATION_ERROR) Serial.println("\r[Error] allocating memory");
+    // }
+    // Serial.println();
+    return true;
+}
+
+bool QuickESPNow::FAIL_CHECK(INITIALIZATION_ERRORS* error_array) {
+    if(this->error_counter == 0) {
+        // Serial.println("\r[SUCCESS] THERE WERE NO INITIALIZATION ERROR");
+        error_array = this->setup_errors;    
+        return false;
     }
-    Serial.println();
+    // for(int i = 0; i < this->error_counter; i++) {
+    //     if(this->setup_errors[i]==ESP_NOW_INITIALIZATION_ERROR) Serial.println("\r[Error] initializing ESP-NOW");
+    //     else if(this->setup_errors[i]==ESP_NOW_COMMUNICATION_SETUP_ERROR ) Serial.println("\r[Error] in the consructors communication parameter");
+    //     else if(this->setup_errors[i]==CHANNEL_OUT_OF_RANGRE) Serial.println("\r[Error] in the value of the channel (channel ranges 0-13)");        
+        // else if(this->setup_errors[i]==NEW_MAC_INITIALIZATION_ERROR) Serial.println("\r[Error] setting new MAC address");
+    //     else if(this->setup_errors[i]==ADD_PEER_INITIALIZATION_ERROR) Serial.println("\r[Error] adding peer");
+    //     else if(this->setup_errors[i]==MEMORY_ALLOCATION_ERROR) Serial.println("\r[Error] allocating memory");
+    // }
+    // Serial.println();
     return true;
 }
 /***********************************************************/
