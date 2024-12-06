@@ -175,6 +175,7 @@ void loop() {
 ### Bug Fixes
 - Resolved issues with sending messages to peers on channels other than channel 1.
 - Fixed encryption issues to ensure proper data security.
+- Fixed the unknown variable type sending
 
 ## Warnings
 

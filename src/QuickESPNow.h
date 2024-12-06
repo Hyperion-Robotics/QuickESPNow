@@ -37,13 +37,6 @@ class QuickESPNow {
     static Msg_Queue recieved_msgs; 
     /********The callback_fuctions for sending and reiciving messages********/
 
-
-    /**
-     * @brief   Sets a received message in the message queue.
-     * @param   msg The message structure to be added.
-     */
-    static void setRecvMsg(msg_struct msg);
-    
     /**
      * @brief   Callback function for handling sent messages.
      * @param   mac_addr MAC address of the peer to which the message was sent.
@@ -88,7 +81,6 @@ class QuickESPNow {
     bool Encryption;                                    ///< Flag indicating whether encryption is enabled or not.
     char** LMK_key;                                     ///< Pointer to an array of LMK encryption keys for each peer.
 
-    static bool send_success;
   public:
     /********Constructors********/
     /**
@@ -188,7 +180,7 @@ class QuickESPNow {
      * @param   msg The message to be sent
      */
     template<typename T> 
-    bool Send(const int id, const T msg);
+    void Send(const int id, const T msg);
 
     /**
      * @brief   Method for sending arrays  
@@ -198,7 +190,7 @@ class QuickESPNow {
      * @param   size The size of the array
      */
     template<typename T> 
-    bool Send(const int id, const T* msg, int size); // method for sending arrays data 
+    void Send(const int id, T* msg, int size); // method for sending arrays data 
     
     /**
      * @brief       Method for recieving the non-pointers/non-arrays messages
@@ -273,7 +265,7 @@ class QuickESPNow {
     void setWiFi_to_AP();
 
     /**
-     * @brief   Set WiFi mode to Access Point + Station
+     * @brief   Set WiFi mode to Access Point and Station
      */
     void setWiFi_to_APSTA();
     /********Other utils********/
@@ -285,7 +277,7 @@ class QuickESPNow {
 };
 
 template<typename T> 
-bool QuickESPNow::Send(const int id, const T msg) {
+void QuickESPNow::Send(const int id, T msg) {
     bool id_exists = false;
     int key;
     for(int i = 0; i<this->id_counter; i++){
@@ -297,20 +289,20 @@ bool QuickESPNow::Send(const int id, const T msg) {
     }
     
     if(!id_exists){
-        // Serial.println("[Fail] Unknown esp id");
-        return false;
+        Serial.println("[Fail] Unknown esp id");
+        return;
     }
 
     // Check if the peer exists
     if (!esp_now_is_peer_exist(this->Peers_MAC[key])) {
-        // Serial.println("[Error] Peer does not exist");
-        return false;
+        Serial.println("[Error] Peer does not exist");
+        return;
     }
 
     esp_now_peer_info_t temp_peer;
     if (esp_now_get_peer(this->Peers_MAC[key], &temp_peer) != ESP_OK) {
-        // Serial.println("[Error] Failed to get peer info");
-        return false;
+        Serial.println("[Error] Failed to get peer info");
+        return;
     }
 
     if(WiFi.channel() != temp_peer.channel){
@@ -318,45 +310,37 @@ bool QuickESPNow::Send(const int id, const T msg) {
     }
 
     msg_struct msg_to_sent;
-    msg_to_sent.array = false;
+
     
     if constexpr (std::is_same<T, int>::value){
         msg_to_sent.type = INT;
-        msg_to_sent.msg.i = msg;
     }else if constexpr (std::is_same<T, short>::value){
         msg_to_sent.type = SHORT;
-        msg_to_sent.msg.s = msg;
     }else if constexpr (std::is_same<T, long>::value){
         msg_to_sent.type = LONG;
-        msg_to_sent.msg.l = msg;
     }else if constexpr (std::is_same<T, float>::value){
         msg_to_sent.type = FLOAT;
-        msg_to_sent.msg.f = msg;
     }else if constexpr (std::is_same<T, double>::value){
         msg_to_sent.type = DOUBLE;
-        msg_to_sent.msg.d = msg;
     }else if constexpr (std::is_same<T, char>::value){
         msg_to_sent.type = CHAR;
-        msg_to_sent.msg.c = msg;
     }else if constexpr (std::is_same<T, bool>::value){
         msg_to_sent.type = BOOL;
-        msg_to_sent.msg.b = msg;
     }else if constexpr (std::is_same<T, data>::value){
         msg_to_sent.type = DATA;
-        msg_to_sent.msg.dt = msg;
     }else{
-        msg_to_sent.type = DATA;
-        msg_to_sent.msg.un = msg;
+        msg_to_sent.type = UNKNOWN;
     }
 
+    msg_to_sent.size = 0;
+    msg_to_sent.data = (void*)(msg);
 
-    bool result = esp_now_send(this->Peers_MAC[key], (uint8_t*) &msg_to_sent, sizeof(msg_to_sent));
-    // this->send_success ? Serial.println("Successfully sent msg") : Serial.println("Failed to send msg");
-    return this->send_success;
+    bool result = esp_now_send(this->Peers_MAC[key], (uint8_t*)&msg_to_sent, sizeof(msg_to_sent));
+    result == ESP_OK ? Serial.println("Successfully sent msg") : Serial.println("Failed to send msg");
 }
 
 template<typename T> 
-bool QuickESPNow::Send(const int id, const T* msg, int size) {
+void QuickESPNow::Send(const int id, T* msg, int size) {
     bool id_exists = false;
     int key;
     for(int i = 0; i<this->id_counter; i++){
@@ -368,20 +352,20 @@ bool QuickESPNow::Send(const int id, const T* msg, int size) {
     }
     
     if(!id_exists){
-        // Serial.println("[Fail] Unknown esp id");
-        return false;
+        Serial.println("[Fail] Unknown esp id");
+        return;
     }
 
     // Check if the peer exists
     if (!esp_now_is_peer_exist(this->Peers_MAC[key])) {
-        // Serial.println("[Error] Peer does not exist");
-        return false;
+        Serial.println("[Error] Peer does not exist");
+        return;
     }
 
     esp_now_peer_info_t temp_peer;
     if (esp_now_get_peer(this->Peers_MAC[key], &temp_peer) != ESP_OK) {
-        // Serial.println("[Error] Failed to get peer info");
-        return false;
+        Serial.println("[Error] Failed to get peer info");
+        return;
     }
 
     if(WiFi.channel() != temp_peer.channel){
@@ -389,73 +373,35 @@ bool QuickESPNow::Send(const int id, const T* msg, int size) {
     }
 
     msg_struct msg_to_sent;
-    msg_to_sent.array = true;
-
-    if constexpr (std::is_same<T, int>::value) {
-        msg_to_sent.type = INT;
-        msg_to_sent.msg.i_ptr = (T*)malloc(size * sizeof(T));
-        for (int i = 0; i < size; i++) {
-            msg_to_sent.msg.i_ptr[i] = msg[i];
-        }
-    }else if constexpr (std::is_same<T, short>::value) {
-        msg_to_sent.type = SHORT;
-        msg_to_sent.msg.s_ptr = (T*)malloc(size * sizeof(T));
-        for (int i = 0; i < size; i++) {
-            msg_to_sent.msg.s_ptr[i] = msg[i];
-        }
-    }else if constexpr (std::is_same<T, long>::value) {
-        msg_to_sent.type = LONG;
-        msg_to_sent.msg.l_ptr = (T*)malloc(size * sizeof(T));
-        for (int i = 0; i < size; i++) {
-            msg_to_sent.msg.l_ptr[i] = msg[i];
-        }
-    }else if constexpr (std::is_same<T, float>::value) {
-        msg_to_sent.type = FLOAT;
-        msg_to_sent.msg.f_ptr = (T*)malloc(size * sizeof(T));
-        for (int i = 0; i < size; i++) {
-            msg_to_sent.msg.f_ptr[i] = msg[i];
-        }
-    }else if constexpr (std::is_same<T, double>::value) {
-        msg_to_sent.type = DOUBLE;
-        msg_to_sent.msg.d_ptr = (T*)malloc(size * sizeof(T));
-        for (int i = 0; i < size; i++) {
-            msg_to_sent.msg.d_ptr[i] = msg[i];
-        }
-    }else if constexpr (std::is_same<T, char>::value) {
-        msg_to_sent.type = CHAR;
-        msg_to_sent.msg.c_ptr = (T*)malloc(size * sizeof(T));
-        for (int i = 0; i < size; i++) {
-            msg_to_sent.msg.c_ptr[i] = msg[i];
-        }
-    }else if constexpr (std::is_same<T, bool>::value) {
-        msg_to_sent.type = BOOL;
-        msg_to_sent.msg.b_ptr = (T*)malloc(size * sizeof(T));
-        for (int i = 0; i < size; i++) {
-            msg_to_sent.msg.b_ptr[i] = msg[i];
-        }
-    }else if constexpr (std::is_same<T, data>::value) {
-        msg_to_sent.type = DATA;
-        msg_to_sent.msg.dt_ptr = (T*)malloc(size * sizeof(T));
-        for (int i = 0; i < size; i++) {
-            msg_to_sent.msg.dt_ptr[i] = msg[i];
-        }
-    }
-
+    void* data;
     
-
-    bool result = esp_now_send(this->Peers_MAC[key], (uint8_t*) &msg_to_sent, sizeof(msg_to_sent));
-    // this->send_success ? Serial.println("Successfully sent msg") : Serial.println("Failed to send msg");
-
-    if(msg_to_sent.type == INT) free(msg_to_sent.msg.i_ptr);
-    else if(msg_to_sent.type == SHORT) free(msg_to_sent.msg.s_ptr);
-    else if(msg_to_sent.type == LONG) free(msg_to_sent.msg.l_ptr);
-    else if(msg_to_sent.type == FLOAT) free(msg_to_sent.msg.f_ptr);
-    else if(msg_to_sent.type == DOUBLE) free(msg_to_sent.msg.d_ptr);
-    else if(msg_to_sent.type == CHAR) free(msg_to_sent.msg.c_ptr);
-    else if(msg_to_sent.type == BOOL) free(msg_to_sent.msg.b_ptr);
-    else if(msg_to_sent.type == DATA) free(msg_to_sent.msg.dt_ptr);
-
-    return this->send_success;
+    if constexpr (std::is_same<T, int>::value){
+        msg_to_sent.type = INT;
+    }else if constexpr (std::is_same<T, short>::value){
+        msg_to_sent.type = SHORT;
+    }else if constexpr (std::is_same<T, long>::value){
+        msg_to_sent.type = LONG;
+    }else if constexpr (std::is_same<T, float>::value){
+        msg_to_sent.type = FLOAT;
+    }else if constexpr (std::is_same<T, double>::value){
+        msg_to_sent.type = DOUBLE;
+    }else if constexpr (std::is_same<T, char>::value){
+        msg_to_sent.type = CHAR;
+    }else if constexpr (std::is_same<T, bool>::value){
+        msg_to_sent.type = BOOL;
+    }else{
+        msg_to_sent.type = UNKNOWN;
+    }
+    
+    msg_to_sent.size = size;
+   
+   for(int i = 0; i < size; i++){
+       msg_to_sent.data_array[i] = (void*)(msg[i]);
+    }
+    
+    // Send the message
+    bool result = esp_now_send(this->Peers_MAC[key], (uint8_t*)&msg_to_sent, sizeof(msg_to_sent));
+    result == ESP_OK ? Serial.println("Successfully sent msg") : Serial.println("Failed to send msg");
 }
 
 template<typename T>
@@ -468,5 +414,4 @@ template<typename T>
 void QuickESPNow::read_array(T* output){
     QuickESPNow::recieved_msgs.popArray(output);
 }
-
 #endif

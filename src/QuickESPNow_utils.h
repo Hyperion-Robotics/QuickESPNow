@@ -33,38 +33,14 @@ typedef struct {
     bool msg_bool;                  ///< Boolean message.
 } data;
 
-
-typedef union{
-    int i;      ///< Integer type.
-    short s;    ///< Short type.
-    long l;     ///< Long type.
-    float f;    ///< Float type.    
-    double d;   ///< Double type.    
-    char c;     ///< Character type.
-    bool b;     ///< Boolean type.
-    data dt;    ///< Data structure.    
-    void* un;   ///< Unkown variable type can be used for costum structs or not included variables.    
-
-    int* i_ptr;     ///< Pointer to an integer type.
-    short* s_ptr;   ///< Pointer to a short type.    
-    long* l_ptr;    ///< Pointer to a long type.    
-    float* f_ptr;   ///< Pointer to a float type.        
-    double* d_ptr;  ///< Pointer to a double type.        
-    char* c_ptr;    ///< Pointer to a character type.    
-    bool* b_ptr;    ///< Pointer to a boolean type.    
-    data* dt_ptr;   ///< Pointer to a data structure.        
-} msg_union;
-
-
-// Specialization for arrays
 /**
- * @brief   Specialization for arrays
+ * @brief   Create a struct that contains the data of the message
  */
-typedef struct{
-    MSG_VARIABLE_TYPE type; ///< Type of the message variable.                      
-    bool array;             ///< Flag indicating if the message is an array.    
-    size_t size;            ///< Size of the message (number of elements).        
-    msg_union msg;          ///< Union to hold different message types.        
+typedef struct {
+    MSG_VARIABLE_TYPE type;             ///< Type of the message (Enum).
+    int size;                           ///< Size of the message.
+    void* data = nullptr;               ///< Pointer to the data.
+    void* data_array[STRING_LENGTH];    ///< Array to hold the data.
 } msg_struct;
 
 /**
