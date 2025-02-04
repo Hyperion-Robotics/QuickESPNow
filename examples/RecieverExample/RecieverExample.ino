@@ -1,41 +1,42 @@
 #include "QuickESPNow.h"
 
-#define ID 3
+#define MAX_PEERS 2
 
-int timer = 5;
-int led = 0;
+#define ID 1
+#define SENDER 1
+#define RECEIVER1 2
+#define RECEIVER2 3
+#define TWOWAY 4
 
-uint8_t MACS[4][MAC_LENGTH] = {
-  {0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA},
-  {0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAB},
-  {0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAC},
-  {0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAD}
+#define CHANNEL 0
+
+
+uint8_t MACS[MAX_PEERS +1 ][MAC_LENGTH] = {
+  {0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA},//Sender MAC
+  {0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAB},//RECEIBER1
+  {0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAC},//RECEIVER2
+  {0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAD}//TWOWAY ESP
 };
 
-uint8_t Senders_MAC[MAC_LENGTH] = {0x84, 0xfc, 0xe6, 0x08, 0xee, 0x7c};
-
-QuickESPNow my_esp(RECEIVER, 1, MACS[ID]);
+QuickESPNow receiver_1(RECEIVER, MAX_PEERS, MACS[ID]);
 
 void setup() {
   Serial.begin(115200);
   pinMode(led, OUTPUT);
 
-  my_esp.begin();
+  receiver_1.begin();
   // delay(500);
-  my_esp.addPeer(0, senders_MAC, 0, WIFI_IF_STA);
-  my_esp.FAIL_CHECK();
-  // my_esp.FAIL_CHECK();
+  receiver_1.addPeer(SENDER, MACS[0], CHANNEL, WIFI_IF_STA);
+  receiver_1.addPeer(TWOWAY, MACS[3], CHANNEL, WIFI_IF_STA);
+  receiver_1.FAIL_CHECK();//Since it has print function inside theres no need to print our own
 }
 
 void loop() {
-  if(my_esp.available()){
-    timer = my_esp.read<int>();
+  int received_value;
+  if(receiver_1.available()){
+    received_value = my_esp.read<int>();
+    Serial.print("Received: ");
+    Serial.println(received_value);
   }
-
-  if(timer > 0){
-    digitalWrite(led, HIGH);
-    sleep(timer);
-    digitalWrite(led, LOW);
-    timer = 0;
-  }
+  delay(100);
 }

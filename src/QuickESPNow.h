@@ -81,6 +81,8 @@ class QuickESPNow {
     bool Encryption;                                    ///< Flag indicating whether encryption is enabled or not.
     char** LMK_key;                                     ///< Pointer to an array of LMK encryption keys for each peer.
 
+    static volatile bool msg_recved;
+
   public:
     /********Constructors********/
     /**
@@ -180,7 +182,7 @@ class QuickESPNow {
      * @param   msg The message to be sent
      */
     template<typename T> 
-    void Send(const int id, const T msg);
+    bool Send(const int id, const T msg);
 
     /**
      * @brief   Method for sending arrays  
@@ -190,7 +192,7 @@ class QuickESPNow {
      * @param   size The size of the array
      */
     template<typename T> 
-    void Send(const int id, T* msg, int size); // method for sending arrays data 
+    bool Send(const int id, T* msg, int size); // method for sending arrays data 
     
     /**
      * @brief       Method for recieving the non-pointers/non-arrays messages
@@ -277,7 +279,7 @@ class QuickESPNow {
 };
 
 template<typename T> 
-void QuickESPNow::Send(const int id, T msg) {
+bool QuickESPNow::Send(const int id, T msg) {
     bool id_exists = false;
     int key;
     for(int i = 0; i<this->id_counter; i++){
@@ -289,20 +291,17 @@ void QuickESPNow::Send(const int id, T msg) {
     }
     
     if(!id_exists){
-        Serial.println("[Fail] Unknown esp id");
-        return;
+        return false;
     }
 
     // Check if the peer exists
     if (!esp_now_is_peer_exist(this->Peers_MAC[key])) {
-        Serial.println("[Error] Peer does not exist");
-        return;
+        return false;
     }
 
     esp_now_peer_info_t temp_peer;
     if (esp_now_get_peer(this->Peers_MAC[key], &temp_peer) != ESP_OK) {
-        Serial.println("[Error] Failed to get peer info");
-        return;
+        return false;
     }
 
     if(WiFi.channel() != temp_peer.channel){
@@ -335,12 +334,15 @@ void QuickESPNow::Send(const int id, T msg) {
     msg_to_sent.size = 0;
     msg_to_sent.data = (void*)(msg);
 
-    bool result = esp_now_send(this->Peers_MAC[key], (uint8_t*)&msg_to_sent, sizeof(msg_to_sent));
-    result == ESP_OK ? Serial.println("Successfully sent msg") : Serial.println("Failed to send msg");
+    bool result = esp_now_send(this->Peers_MAC[key], (uint8_t*)&msg_to_sent, sizeof(msg_to_sent)) == ESP_OK;
+
+    bool success = (result && msg_recved);
+    msg_recved = false;
+    return success;
 }
 
 template<typename T> 
-void QuickESPNow::Send(const int id, T* msg, int size) {
+bool QuickESPNow::Send(const int id, T* msg, int size) {
     bool id_exists = false;
     int key;
     for(int i = 0; i<this->id_counter; i++){
@@ -352,20 +354,17 @@ void QuickESPNow::Send(const int id, T* msg, int size) {
     }
     
     if(!id_exists){
-        Serial.println("[Fail] Unknown esp id");
-        return;
+        return false;
     }
 
     // Check if the peer exists
     if (!esp_now_is_peer_exist(this->Peers_MAC[key])) {
-        Serial.println("[Error] Peer does not exist");
-        return;
+        return false;
     }
 
     esp_now_peer_info_t temp_peer;
     if (esp_now_get_peer(this->Peers_MAC[key], &temp_peer) != ESP_OK) {
-        Serial.println("[Error] Failed to get peer info");
-        return;
+        return false;
     }
 
     if(WiFi.channel() != temp_peer.channel){
@@ -400,8 +399,11 @@ void QuickESPNow::Send(const int id, T* msg, int size) {
     }
     
     // Send the message
-    bool result = esp_now_send(this->Peers_MAC[key], (uint8_t*)&msg_to_sent, sizeof(msg_to_sent));
-    result == ESP_OK ? Serial.println("Successfully sent msg") : Serial.println("Failed to send msg");
+    bool result = (esp_now_send(this->Peers_MAC[key], (uint8_t*)&msg_to_sent, sizeof(msg_to_sent)) == ESP_OK);
+
+    bool success = (result && msg_recved);
+    msg_recved = false;
+    return success;
 }
 
 template<typename T>

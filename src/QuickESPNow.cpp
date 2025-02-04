@@ -16,8 +16,7 @@ void QuickESPNow::getEspMAC(uint8_t* MAC){
 
 
 void QuickESPNow::OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status){
-    Serial.print("\r\nLast Packet Send Status:\t");
-    Serial.println(status == ESP_NOW_SEND_SUCCESS ? "Delivery Success" : "Delivery Fail");
+    msg_recved = (status == ESP_NOW_SEND_SUCCESS);
 }
 
 #if ESP_ARDUINO_VERSION >= ESP_ARDUINO_VERSION_VAL(3, 0, 0)
@@ -34,6 +33,8 @@ void QuickESPNow::OnDataRecv(const uint8_t *mac_addr, const uint8_t *incomingDat
 }
 #endif
 uint8_t QuickESPNow::Local_MAC[MAC_LENGTH];
+
+volatile bool QuickESPNow::msg_recved = false;
 
 Msg_Queue QuickESPNow::recieved_msgs;
 /***********************************************************************/
@@ -112,10 +113,7 @@ void QuickESPNow::addPeer(int id, uint8_t* Peers_MAC, int Ch, wifi_interface_t m
 
     // Add receiver as peer        
     if (esp_now_add_peer(&peerInfo) != ESP_OK) {
-        Serial.println("[Error] Failed to add peer");
         return;
-    }else{
-        Serial.println("[SUCCESS] peer has been added succesfuly");
     }
 }
 
@@ -148,10 +146,7 @@ void QuickESPNow::addPeer(int id, uint8_t* Peers_MAC, int Ch, wifi_interface_t m
 
     // Add receiver as peer        
     if (esp_now_add_peer(&peerInfo) != ESP_OK){
-        Serial.println("Failed to add peer");
         return;
-    }else{
-        Serial.println("[SUCCESS] peer has been added succesfuly");
     }
 }
 
@@ -163,10 +158,7 @@ void QuickESPNow::addPeer(int id, esp_now_peer_info_t* Peer){
 
     // Add receiver as peer        
     if (esp_now_add_peer(Peer) != ESP_OK){
-        Serial.println("Failed to add peer");
         return;
-    }else{
-        Serial.println("[SUCCESS] peer has been added succesfuly");
     }
 }
 
@@ -194,11 +186,6 @@ void QuickESPNow::begin(){
             break;
     }
 
-
-    // Read the old MAC
-    Serial.print("[OLD] ESP32 Board MAC Address:  ");
-    Serial.println(WiFi.macAddress());
-
     delay(100);
 
     // Set new MAC
@@ -206,13 +193,9 @@ void QuickESPNow::begin(){
 
     delay(100);
     
-    Serial.print("\r[NEW] ESP32 Board MAC Address:  ");
-    Serial.println(WiFi.macAddress());
-
     // Verify that the new MAC is set correctly
 
     if (!WiFi.macAddress().equals(getMACtoSTRING(this->Local_MAC))) {
-        Serial.println("\r[Error] Failed to change MAC");
         this->setup_errors[this->error_counter] = NEW_MAC_INITIALIZATION_ERROR;
         this->error_counter++;
     }
