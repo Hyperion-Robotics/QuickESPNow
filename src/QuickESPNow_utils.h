@@ -59,7 +59,7 @@ void Set_Data_parameters(data *new_struct, char type, char new_char[], int new_i
  * @param mac Pointer to the MAC address.
  * @return String representation of the MAC address.
  */
-String getMACtoSTRING(uint8_t *mac);
+String getMACtoSTRING(const uint8_t *mac);
 
 /**
  * @brief Function to convert string to MAC address.
