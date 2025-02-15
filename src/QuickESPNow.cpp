@@ -21,12 +21,18 @@ void QuickESPNow::OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t stat
 
 #if ESP_ARDUINO_VERSION >= ESP_ARDUINO_VERSION_VAL(3, 0, 0)
 void QuickESPNow::OnDataRecv(const esp_now_recv_info_t *info, const uint8_t *incomingData, int len) {
+    if(QuickESPNow::verify_peers && !isPeer(info->src_addr)){
+        return;
+    }
     msg_struct receivedData;
     memcpy(&receivedData, incomingData, sizeof(receivedData));
     QuickESPNow::recieved_msgs.add(&receivedData);
 }
 #elif ESP_ARDUINO_VERSION == ESP_ARDUINO_VERSION_VAL(2, 0, 17)
 void QuickESPNow::OnDataRecv(const uint8_t *mac_addr, const uint8_t *incomingData, int len) {
+    if(QuickESPNow::verify_peers && !isPeer(mac_addr)){
+        return;
+    }
     msg_struct receivedData;
     memcpy(&receivedData, incomingData, sizeof(receivedData));
     QuickESPNow::recieved_msgs.add(&receivedData);
@@ -35,6 +41,9 @@ void QuickESPNow::OnDataRecv(const uint8_t *mac_addr, const uint8_t *incomingDat
 uint8_t QuickESPNow::Local_MAC[MAC_LENGTH];
 
 volatile bool QuickESPNow::msg_recved = false;
+
+bool QuickESPNow::verify_peers = false;
+
 
 Msg_Queue QuickESPNow::recieved_msgs;
 /***********************************************************************/
@@ -162,6 +171,10 @@ void QuickESPNow::addPeer(int id, esp_now_peer_info_t* Peer){
     }
 }
 
+void QuickESPNow::peerVerification(bool verify){
+    verify_peers = verify;
+}
+
 void QuickESPNow::begin(){
     // Set the WiFi module to station mode
     WiFi.mode(WIFI_STA);
@@ -246,6 +259,21 @@ bool QuickESPNow::isArray() const{
 
 MSG_VARIABLE_TYPE QuickESPNow::data_type() const{
     return QuickESPNow::recieved_msgs.data_type();
+}
+
+bool QuickESPNow::isPeer(const uint8_t* MAC){
+    esp_now_peer_info_t peer;
+    return esp_now_get_peer(MAC, &peer) == ESP_OK;
+}
+
+int QuickESPNow::getPeerID(const uint8_t* MAC){
+    for(int i = 0; i < this->id_counter; i++){
+        if(memcmp(MAC, this->Peers_MAC[i], 6) == 0){
+            return this->ids[this->id_counter];
+        }
+    }
+
+    return -1;
 }
 /********************************************************************/
 
