@@ -1,9 +1,9 @@
 #include "QuickESPNow.h"
 
-#define MAX_PEERS 2
+#define MAX_PEERS 4
 
 #define ID 1
-#define SENDER 1
+#define SENDER_ID 1
 #define RECEIVER1 2
 #define RECEIVER2 3
 #define TWOWAY 4
@@ -11,7 +11,7 @@
 #define CHANNEL 0
 
 
-uint8_t MACS[MAX_PEERS +1 ][MAC_LENGTH] = {
+uint8_t MACS[MAX_PEERS][MAC_LENGTH] = {
   {0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA},//Sender MAC
   {0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAB},//RECEIBER1
   {0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAC},//RECEIVER2
@@ -34,7 +34,7 @@ void setup() {
 void loop() {
   int received_value;
   if(receiver_1.available()){
-    received_value = my_esp.read<int>();
+    received_value = receiver_1.read<int>();
     Serial.print("Received: ");
     Serial.println(received_value);
   }
