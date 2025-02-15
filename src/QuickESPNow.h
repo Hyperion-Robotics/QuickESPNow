@@ -82,6 +82,7 @@ class QuickESPNow {
     char** LMK_key;                                     ///< Pointer to an array of LMK encryption keys for each peer.
 
     static volatile bool msg_recved;
+    static bool verify_peers;
 
   public:
     /********Constructors********/
@@ -143,6 +144,8 @@ class QuickESPNow {
      */
     void addPeer(int id, esp_now_peer_info_t* Peer);
 
+    void peerVerification(bool verify);
+
     /**
      * @brief   Set custom send callback function
      * @param   custom The function to be called when a message is sent
@@ -159,7 +162,7 @@ class QuickESPNow {
      * @brief   Prints all the possible initialization errors
      * 
      * @return
-     *          - true : There were no errors
+     *          - false : There were no errors
      *          - true : There were errors
      */
     bool FAIL_CHECK();          // Check for initialization errors
@@ -239,6 +242,10 @@ class QuickESPNow {
      *          - DATA : The recieved message is type of data struct
      */
     MSG_VARIABLE_TYPE data_type() const;
+
+    static bool isPeer(const uint8_t* MAC);
+
+    int getPeerID(const uint8_t* MAC);
     /********Msg sending and recieving methods********/
 
     /********Other utils********/
