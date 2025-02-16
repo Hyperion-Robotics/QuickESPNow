@@ -20,7 +20,7 @@
 ///< Define constants
 #define MAC_LENGTH 6         ///< Length of MAC address
 #define STRING_LENGTH 40     ///< Maximum string length
-#define SETTUP_ERRORS 6      ///< Number of setup errors
+#define SETTUP_ERRORS 7      ///< Number of setup errors
 #define ENCRYPTION_KEY_LENGTH 16
 #define VARIABLE_TYPES 17
 
@@ -37,12 +37,14 @@ enum COMMUNICATION {
  * @brief   Enum for initialization error types.
  */ 
 enum INITIALIZATION_ERRORS {
+    NO_ERROR,                            ///< No error                             
     ESP_NOW_INITIALIZATION_ERROR,        ///< [Error] initializing ESP-NOW                              *1              
     ESP_NOW_COMMUNICATION_SETUP_ERROR,   ///< [Error] in the consructors communication parameter        *2                                         
-    CHANNEL_OUT_OF_RANGRE,               ///< [Error] in the value of the channel (channel ranges 0-13)  *3                                  
+    CHANNEL_OUT_OF_RANGRE,               ///< [Error] in the value of the channel (channel ranges 0-13) *3                                  
     NEW_MAC_INITIALIZATION_ERROR,        ///< [Error] setting new MAC address                           *4                  
     ADD_PEER_INITIALIZATION_ERROR,       ///< [Error] adding peer                                       *5      
-    MEMORY_ALLOCATION_ERROR              ///< [Error] allocating memory                                 *6  
+    MEMORY_ALLOCATION_ERROR,             ///< [Error] allocating memory                                 *6
+    ADDED_USED_PEER_WARNING              ///< [Warning] added a peer that has already been added        *7
 };
 
 /**
