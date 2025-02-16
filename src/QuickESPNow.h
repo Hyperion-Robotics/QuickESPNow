@@ -66,8 +66,7 @@ class QuickESPNow {
 
     /************************************************************************/
 
-    int error_counter = 0;                              ///< Counter to track the number of errors during initialization.
-    INITIALIZATION_ERRORS setup_errors[SETTUP_ERRORS];  ///< Array to store initialization error statuses.
+    INITIALIZATION_ERRORS setup_errors[SETTUP_ERRORS + 1];  ///< Array to store initialization error statuses.
     
 
     int ESP_COM;                                        ///< Variable to manage the communication type (sending, receiving, or both).
@@ -108,7 +107,7 @@ class QuickESPNow {
     /**
      * @brief   Initializes the options set in the constructor
      */
-    void begin();
+    void begin(wifi_mode_t mode = WIFI_STA);
 
     /**
      * @brief   Changes the ESP's channel
