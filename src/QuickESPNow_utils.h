@@ -44,6 +44,21 @@ typedef struct {
 } msg_struct;
 
 /**
+ * @brief   Create a struct that contains the MAC addresses for multicasting
+ */
+typedef struct {
+    uint8_t** MACS;
+} group_MAC;
+
+/**
+ * @brief   Create a struct that contains ids for multicasting
+ * @warning The ids must be given with the .addPeer method or it will fail so an unkown id will be skipped
+ */
+typedef struct{
+    int* ids;
+} group_ids;
+
+/**
  * @brief Function to set data parameters in the data structure.
  * @param new_struct Pointer to the data structure to be modified.
  * @param type The type of message to set.
