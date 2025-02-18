@@ -61,7 +61,7 @@ class QuickESPNow {
          */
         static void OnDataRecv(const uint8_t *mac_addr, const uint8_t *incomingData, int len);
     #else
-        #error unsapported board 
+        #error unsapported board version
     #endif
 
     /************************************************************************/
@@ -73,10 +73,10 @@ class QuickESPNow {
     static uint8_t Local_MAC[MAC_LENGTH];               ///< Array to hold the local MAC address of the ESP.
     char* PMK_key = nullptr;                            ///< Pointer to hold the PMK encryption key for secure communication.
     
-    int id_counter = 0;                                 ///< Counter to assign unique IDs to peers.
+    static int id_counter;                                 ///< Counter to assign unique IDs to peers.
     int* ids;                                           ///< Pointer to an array storing IDs of peers.
     
-    uint8_t** Peers_MAC;                                ///< Pointer to a 2D array storing MAC addresses of peers.
+    static uint8_t** Peers_MAC;                         ///< Pointer to a 2D array storing MAC addresses of peers.
     bool Encryption;                                    ///< Flag indicating whether encryption is enabled or not.
     char** LMK_key;                                     ///< Pointer to an array of LMK encryption keys for each peer.
 
@@ -143,6 +143,13 @@ class QuickESPNow {
      */
     void addPeer(int id, esp_now_peer_info_t* Peer);
 
+    /**
+     * @brief   Sets whether the received messages will be verified by MAC address.
+     * @param   verify A boolean value indicating the verification status.
+     *                 - true: Enable verification of received messages by MAC address.
+     *                 - false: Disable verification of received messages by MAC address.
+     * @note    When verification is enabled, the MAC address of the sender will be checked against known peers.
+     */
     void peerVerification(bool verify);
 
     /**
@@ -195,6 +202,26 @@ class QuickESPNow {
      */
     template<typename T> 
     bool Send(const int id, T* msg, int size); // method for sending arrays data 
+
+    // /**
+    //  * @brief   Method for sending non-pointers/non-arrays  
+    //  * @tparam T The type of the array elements
+    //  * @param   group The group of peers
+    //  * @param   msg The message to be sent
+    //  */
+    // template<typename T> 
+    // bool Send(const group_MAC group, const T msg);
+
+    // /**
+    //  * @brief   Method for sending arrays  
+    //  * @tparam T The type of the array elements
+    //  * @param   id Peers's setted ID
+    //  * @param   msg The message to be sent
+    //  * @param   size The size of the array
+    //  */
+    // template<typename T> 
+    // bool Send(const group_MAC group, T* msg, int size); // method for sending arrays data 
+
     
     /**
      * @brief       Method for recieving the non-pointers/non-arrays messages
@@ -243,11 +270,20 @@ class QuickESPNow {
     MSG_VARIABLE_TYPE data_type() const;
 
     static bool isPeer(const uint8_t* MAC);
-
-    int getPeerID(const uint8_t* MAC);
+    
+    static bool isKnownMAC(const uint8_t* MAC);
     /********Msg sending and recieving methods********/
-
+    
     /********Other utils********/
+    /**
+     * @brief   Get the peer's ID
+     * @param   MAC The peer's MAC adress
+     * 
+     * @return
+     *         - int : The peer's ID
+     */
+    int getPeerID(const uint8_t* MAC);
+
     /**
      * @brief   Get the ESP's MAC adress 
      * 
@@ -261,6 +297,28 @@ class QuickESPNow {
      * @param   MAC The variable that will be assigned a pointer of the ESP's MAC adress
      */
     static void getEspMAC(uint8_t* MAC); 
+
+    /**
+     * @brief   Get the number of all peers
+     * @param   peer_num The variable that will be assigned the number of all peers
+     */
+    void getNumberOfALLPeers(esp_now_peer_num_t *peer_num);
+
+    /**
+     * @brief   Get the number of non-encrypted peers
+     * 
+     * @return
+     *         - int : The number of non-encrypted peers
+     */
+    int getNumberOfNonEncryptedPeers();
+
+    /**
+     * @brief   Get the number of encrypted peers
+     * 
+     * @return
+     *         - int : The number of encrypted peers
+     */
+    int getNumberOfEncryptedPeers();
 
     /**
      * @brief   Set WiFi mode to Station
@@ -288,7 +346,7 @@ template<typename T>
 bool QuickESPNow::Send(const int id, T msg) {
     bool id_exists = false;
     int key;
-    for(int i = 0; i<this->id_counter; i++){
+    for(int i = 0; i<QuickESPNow::id_counter; i++){
         if(this->ids[i]==id){
             id_exists = true;
             key = i;
@@ -301,12 +359,12 @@ bool QuickESPNow::Send(const int id, T msg) {
     }
 
     // Check if the peer exists
-    if (!esp_now_is_peer_exist(this->Peers_MAC[key])) {
+    if (!esp_now_is_peer_exist(QuickESPNow::Peers_MAC[key])) {
         return false;
     }
 
     esp_now_peer_info_t temp_peer;
-    if (esp_now_get_peer(this->Peers_MAC[key], &temp_peer) != ESP_OK) {
+    if (esp_now_get_peer(QuickESPNow::Peers_MAC[key], &temp_peer) != ESP_OK) {
         return false;
     }
 
@@ -340,7 +398,7 @@ bool QuickESPNow::Send(const int id, T msg) {
     msg_to_sent.size = 0;
     msg_to_sent.data = (void*)(msg);
 
-    bool result = esp_now_send(this->Peers_MAC[key], (uint8_t*)&msg_to_sent, sizeof(msg_to_sent)) == ESP_OK;
+    bool result = esp_now_send(QuickESPNow::Peers_MAC[key], (uint8_t*)&msg_to_sent, sizeof(msg_to_sent)) == ESP_OK;
 
     bool success = (result && msg_recved);
     msg_recved = false;
@@ -351,7 +409,7 @@ template<typename T>
 bool QuickESPNow::Send(const int id, T* msg, int size) {
     bool id_exists = false;
     int key;
-    for(int i = 0; i<this->id_counter; i++){
+    for(int i = 0; i<QuickESPNow::id_counter; i++){
         if(this->ids[i]==id){
             id_exists = true;
             key = i;
@@ -364,12 +422,12 @@ bool QuickESPNow::Send(const int id, T* msg, int size) {
     }
 
     // Check if the peer exists
-    if (!esp_now_is_peer_exist(this->Peers_MAC[key])) {
+    if (!esp_now_is_peer_exist(QuickESPNow::Peers_MAC[key])) {
         return false;
     }
 
     esp_now_peer_info_t temp_peer;
-    if (esp_now_get_peer(this->Peers_MAC[key], &temp_peer) != ESP_OK) {
+    if (esp_now_get_peer(QuickESPNow::Peers_MAC[key], &temp_peer) != ESP_OK) {
         return false;
     }
 
@@ -405,7 +463,7 @@ bool QuickESPNow::Send(const int id, T* msg, int size) {
     }
     
     // Send the message
-    bool result = (esp_now_send(this->Peers_MAC[key], (uint8_t*)&msg_to_sent, sizeof(msg_to_sent)) == ESP_OK);
+    bool result = (esp_now_send(QuickESPNow::Peers_MAC[key], (uint8_t*)&msg_to_sent, sizeof(msg_to_sent)) == ESP_OK);
 
     bool success = (result && msg_recved);
     msg_recved = false;
