@@ -68,7 +68,10 @@ bool QuickESPNow::verify_peers = false;
 
 int QuickESPNow::id_counter = 0;
 
-uint8_t** QuickESPNow::Peers_MAC;
+// uint8_t** QuickESPNow::Peers_MAC;
+
+esp_now_peer_info* QuickESPNow::Peer_list;
+
 
 Msg_Queue QuickESPNow::recieved_msgs;
 /***********************************************************************/
@@ -82,10 +85,13 @@ QuickESPNow::QuickESPNow(const COMMUNICATION communication, const int peers_crow
     }
 
     this->ids = (int*)malloc(peers_crowd*sizeof(int));
-    QuickESPNow::Peers_MAC = (uint8_t**)malloc(peers_crowd*sizeof(uint8_t*));
-    for(int i=0; i<peers_crowd; i++){
-        QuickESPNow::Peers_MAC[i] = (uint8_t*)malloc(MAC_LENGTH*sizeof(uint8_t));
-    }
+
+    QuickESPNow::Peer_list = (esp_now_peer_info*)malloc(peers_crowd*sizeof(esp_now_peer_info));
+
+    // QuickESPNow::Peers_MAC = (uint8_t**)malloc(peers_crowd*sizeof(uint8_t*));
+    // for(int i=0; i<peers_crowd; i++){
+    //     QuickESPNow::Peer_list[i].peer_addr = (uint8_t*)malloc(MAC_LENGTH*sizeof(uint8_t));
+    // }
 
     this->Encryption = false;
 
@@ -100,15 +106,18 @@ QuickESPNow::QuickESPNow(const COMMUNICATION communication, const int peers_crow
     }
 
     this->ids = (int*)malloc(peers_crowd*sizeof(int));
-    QuickESPNow::Peers_MAC = (uint8_t**)malloc(peers_crowd*sizeof(uint8_t*));
-    for(int i=0; i<peers_crowd; i++){
-        QuickESPNow::Peers_MAC[i] = (uint8_t*)malloc(MAC_LENGTH*sizeof(uint8_t));
-    }
+
+
+    QuickESPNow::Peer_list = (esp_now_peer_info*)malloc(peers_crowd*sizeof(esp_now_peer_info));
+    // QuickESPNow::Peers_MAC = (uint8_t**)malloc(peers_crowd*sizeof(uint8_t*));
+    // for(int i=0; i<peers_crowd; i++){
+    //     QuickESPNow::Peer_list[i].peer_addr = (uint8_t*)malloc(MAC_LENGTH*sizeof(uint8_t));
+    // }
 
     this->Encryption = true;
 
     memcpy(QuickESPNow::Local_MAC, new_local_MAC, MAC_LENGTH);
-
+    
     if(this->PMK_key == nullptr){
         this->PMK_key = (char*)malloc((ENCRYPTION_KEY_LENGTH + 1) * sizeof(char));
     }
@@ -135,22 +144,25 @@ void QuickESPNow::addPeer(int id, uint8_t* Peers_MAC, int Ch, wifi_interface_t m
     }
 
     this->ids[QuickESPNow::id_counter] = id;
-    memcpy(QuickESPNow::Peers_MAC[QuickESPNow::id_counter], Peers_MAC, MAC_LENGTH);
-    QuickESPNow::id_counter++;
-
+    // memcpy(QuickESPNow::Peer_list[QuickESPNow::id_counter].peer_addr, Peers_MAC, MAC_LENGTH);
+    
     // Initialize the peerInfo structure
-    esp_now_peer_info_t peerInfo;
-    memset(&peerInfo, 0, sizeof(esp_now_peer_info_t));  // Properly zero-initialize
+    // esp_now_peer_info_t peerInfo;
+    // QuickESPNow::Peer_list[QuickESPNow::id_counter] = peerInfo;
+    memset(&QuickESPNow::Peer_list[QuickESPNow::id_counter], 0, sizeof(esp_now_peer_info_t));  // Properly zero-initialize
+    
+    memcpy(QuickESPNow::Peer_list[QuickESPNow::id_counter].peer_addr, Peers_MAC, MAC_LENGTH);
+    QuickESPNow::Peer_list[QuickESPNow::id_counter].channel = 1;  
+    QuickESPNow::Peer_list[QuickESPNow::id_counter].encrypt = false;
+    QuickESPNow::Peer_list[QuickESPNow::id_counter].ifidx = WIFI_IF_STA;
 
-    memcpy(peerInfo.peer_addr, Peers_MAC, 6);
-    peerInfo.channel = 1;  
-    peerInfo.encrypt = false;
-    peerInfo.ifidx = WIFI_IF_STA;
 
+    QuickESPNow::id_counter++;
+    
 
-    if (esp_now_add_peer(&peerInfo) != ESP_OK) {
-        this->setup_errors[ADD_PEER_INITIALIZATION_ERROR] = ADD_PEER_INITIALIZATION_ERROR; 
-    }
+    // if (esp_now_add_peer(&peerInfo) != ESP_OK) {
+    //     this->setup_errors[ADD_PEER_INITIALIZATION_ERROR] = ADD_PEER_INITIALIZATION_ERROR; 
+    // }
 }
 
 
@@ -166,40 +178,39 @@ void QuickESPNow::addPeer(int id, uint8_t* Peers_MAC, int Ch, wifi_interface_t m
         this->setup_errors[ADDED_USED_PEER_WARNING] = ADDED_USED_PEER_WARNING; 
     }
 
-    this->ids[QuickESPNow::id_counter] = id;
-    memcpy(QuickESPNow::Peers_MAC[QuickESPNow::id_counter], Peers_MAC, MAC_LENGTH);
-    QuickESPNow::id_counter++;
-
+    this->ids[QuickESPNow::id_counter] = id;    
     // Initialize the peerInfo structure
-    esp_now_peer_info_t peerInfo;
-    memset(&peerInfo, 0, sizeof(esp_now_peer_info_t));
-    memcpy(peerInfo.peer_addr, Peers_MAC, MAC_LENGTH);
-    peerInfo.channel = Ch;  
-    peerInfo.encrypt = false;
-    peerInfo.ifidx = mode;  // Use station interface (most common for ESP-NOW)
-
+    // esp_now_peer_info_t peerInfo;
+    memset(&QuickESPNow::Peer_list[QuickESPNow::id_counter], 0, sizeof(esp_now_peer_info_t));
+    memcpy(QuickESPNow::Peer_list[QuickESPNow::id_counter].peer_addr, Peers_MAC, MAC_LENGTH);
+    QuickESPNow::Peer_list[QuickESPNow::id_counter].channel = Ch;  
+    QuickESPNow::Peer_list[QuickESPNow::id_counter].encrypt = true;
+    QuickESPNow::Peer_list[QuickESPNow::id_counter].ifidx = mode;  // Use station interface (most common for ESP-NOW)
+    
     //Set the receiver device LMK key
     for (uint8_t i = 0; i < 16; i++) {
-        peerInfo.lmk[i] = LMK_keys_array[i];
+        QuickESPNow::Peer_list[QuickESPNow::id_counter].lmk[i] = LMK_keys_array[i];
     }
-
-
-    // Add receiver as peer        
-    if (esp_now_add_peer(&peerInfo) != ESP_OK){
-        return;
-    }
+    
+    
+    QuickESPNow::id_counter++;
+    // // Add receiver as peer        
+    // if (esp_now_add_peer(&peerInfo) != ESP_OK){
+    //     return;
+    // }
 }
 
 
 void QuickESPNow::addPeer(int id, esp_now_peer_info_t* Peer){
     this->ids[QuickESPNow::id_counter] = id;
-    memcpy(QuickESPNow::Peers_MAC[QuickESPNow::id_counter], Peer->peer_addr, MAC_LENGTH);
+
+    memcpy(&QuickESPNow::Peer_list[QuickESPNow::id_counter], Peer, MAC_LENGTH);
     QuickESPNow::id_counter++;
 
     // Add receiver as peer        
-    if (esp_now_add_peer(Peer) != ESP_OK){
-        return;
-    }
+    // if (esp_now_add_peer(Peer) != ESP_OK){
+    //     return;
+    // }
 }
 
 void QuickESPNow::peerVerification(bool verify){
@@ -207,8 +218,11 @@ void QuickESPNow::peerVerification(bool verify){
 }
 
 void QuickESPNow::begin(wifi_mode_t mode){
-    // Set the WiFi module to station mode
-    WiFi.mode(WIFI_STA);
+    // Set the WiFi mode (default: STA)
+    WiFi.mode(mode);
+
+    delay(100);
+
 
     if (esp_now_init() != ESP_OK) {
         this->setup_errors[ESP_NOW_INITIALIZATION_ERROR] = ESP_NOW_INITIALIZATION_ERROR; 
@@ -230,9 +244,6 @@ void QuickESPNow::begin(wifi_mode_t mode){
     }
 
     delay(100);
-
-    // Set new MAC
-    // esp_wifi_set_mac(WIFI_IF_STA, this->Local_MAC);
 
     switch (mode) {
         case WIFI_STA:
@@ -321,7 +332,7 @@ bool QuickESPNow::isPeer(const uint8_t* MAC){
 
 bool QuickESPNow::isKnownMAC(const uint8_t* MAC){
     for(int i = 0; i < QuickESPNow::id_counter; i++){
-        if(memcmp(MAC, QuickESPNow::Peers_MAC[i], 6) == 0){
+        if(memcmp(MAC, QuickESPNow::Peer_list[i].peer_addr, 6) == 0){
             return true;
         }
     }
@@ -331,7 +342,7 @@ bool QuickESPNow::isKnownMAC(const uint8_t* MAC){
 
 int QuickESPNow::getPeerID(const uint8_t* MAC){
     for(int i = 0; i < QuickESPNow::id_counter; i++){
-        if(memcmp(MAC, QuickESPNow::Peers_MAC[i], 6) == 0){
+        if(memcmp(MAC, QuickESPNow::Peer_list[i].peer_addr, 6) == 0){
             return this->ids[QuickESPNow::id_counter];
         }
     }
@@ -359,21 +370,19 @@ void QuickESPNow::setWiFi_to_APSTA() {
 
 QuickESPNow::~QuickESPNow(){
     QuickESPNow::recieved_msgs.~Msg_Queue();
-    for(int i=0; i<QuickESPNow::id_counter; i++){
-        free(QuickESPNow::Peers_MAC[i]);
-    }
-    free(QuickESPNow::Peers_MAC);
+    
+    // for(int i=0; i<QuickESPNow::id_counter; i++){
+    //     esp_now_del_peer(QuickESPNow::Peer_list[i].peer_addr);
+    //     delay(10);
+    // }
+    esp_now_deinit();
+
+    free(QuickESPNow::Peer_list);
     free(this->PMK_key);
     free(ids);
-
-    for(int i=0; i<QuickESPNow::id_counter; i++){
-        esp_now_del_peer(QuickESPNow::Peers_MAC[i]);
-        delay(10);
-    }
-    esp_now_deinit();
     
     QuickESPNow::recieved_msgs.~Msg_Queue();
-    QuickESPNow::recieved_msgs = Msg_Queue();
+    // QuickESPNow::recieved_msgs = Msg_Queue();
 }
 
 
