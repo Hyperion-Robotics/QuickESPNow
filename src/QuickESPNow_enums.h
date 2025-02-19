@@ -22,7 +22,6 @@
 #define STRING_LENGTH 40                ///< Maximum string length
 #define SETTUP_ERRORS 8                 ///< Number of setup errors
 #define ENCRYPTION_KEY_LENGTH 16        ///< Length of the encryption key
-#define VARIABLE_TYPES 17
 
 /**
  * @brief   Enum for communication modes
