@@ -76,9 +76,9 @@ class QuickESPNow {
     static int id_counter;                                 ///< Counter to assign unique IDs to peers.
     int* ids;                                           ///< Pointer to an array storing IDs of peers.
     
-    static uint8_t** Peers_MAC;                         ///< Pointer to a 2D array storing MAC addresses of peers.
+    // static uint8_t** Peers_MAC;                         ///< Pointer to a 2D array storing MAC addresses of peers.
+    static esp_now_peer_info* Peer_list;
     bool Encryption;                                    ///< Flag indicating whether encryption is enabled or not.
-    char** LMK_key;                                     ///< Pointer to an array of LMK encryption keys for each peer.
 
     static volatile bool msg_recved;
     static bool verify_peers;
@@ -358,18 +358,26 @@ bool QuickESPNow::Send(const int id, T msg) {
         return false;
     }
 
-    // Check if the peer exists
-    if (!esp_now_is_peer_exist(QuickESPNow::Peers_MAC[key])) {
+    // // Check if the peer exists
+    // if (!esp_now_is_peer_exist(QuickESPNow::Peers_MAC[key])) {
+    //     return false;
+    // }
+
+    if(!isKnownMAC(QuickESPNow::Peer_list[key].peer_addr)){
         return false;
     }
 
-    esp_now_peer_info_t temp_peer;
-    if (esp_now_get_peer(QuickESPNow::Peers_MAC[key], &temp_peer) != ESP_OK) {
+    // esp_now_peer_info_t temp_peer;
+    // if (esp_now_get_peer(QuickESPNow::Peers_MAC[key], &temp_peer) != ESP_OK) {
+    //     return false;
+    // }
+
+    if (esp_now_add_peer(&QuickESPNow::Peer_list[key]) != ESP_OK) {
         return false;
     }
 
-    if(WiFi.channel() != temp_peer.channel){
-        setChannel(temp_peer.channel);
+    if(WiFi.channel() != QuickESPNow::Peer_list[key].channel){
+        setChannel(QuickESPNow::Peer_list[key].channel);
     }
 
     msg_struct msg_to_sent;
@@ -398,10 +406,12 @@ bool QuickESPNow::Send(const int id, T msg) {
     msg_to_sent.size = 0;
     msg_to_sent.data = (void*)(msg);
 
-    bool result = esp_now_send(QuickESPNow::Peers_MAC[key], (uint8_t*)&msg_to_sent, sizeof(msg_to_sent)) == ESP_OK;
+    bool result = esp_now_send(QuickESPNow::Peer_list[key].peer_addr, (uint8_t*)&msg_to_sent, sizeof(msg_to_sent)) == ESP_OK;
 
     bool success = (result && msg_recved);
     msg_recved = false;
+
+    esp_now_del_peer(QuickESPNow::Peer_list[key].peer_addr);
     return success;
 }
 
@@ -421,18 +431,21 @@ bool QuickESPNow::Send(const int id, T* msg, int size) {
         return false;
     }
 
-    // Check if the peer exists
-    if (!esp_now_is_peer_exist(QuickESPNow::Peers_MAC[key])) {
+    if(!isKnownMAC(QuickESPNow::Peer_list[key].peer_addr)){
         return false;
     }
 
-    esp_now_peer_info_t temp_peer;
-    if (esp_now_get_peer(QuickESPNow::Peers_MAC[key], &temp_peer) != ESP_OK) {
+    // esp_now_peer_info_t temp_peer;
+    // if (esp_now_get_peer(QuickESPNow::Peers_MAC[key], &temp_peer) != ESP_OK) {
+    //     return false;
+    // }
+
+    if (esp_now_add_peer(&QuickESPNow::Peer_list[key]) != ESP_OK) {
         return false;
     }
 
-    if(WiFi.channel() != temp_peer.channel){
-        setChannel(temp_peer.channel);
+    if(WiFi.channel() != QuickESPNow::Peer_list[key].channel){
+        setChannel(QuickESPNow::Peer_list[key].channel);
     }
 
     msg_struct msg_to_sent;
@@ -463,10 +476,12 @@ bool QuickESPNow::Send(const int id, T* msg, int size) {
     }
     
     // Send the message
-    bool result = (esp_now_send(QuickESPNow::Peers_MAC[key], (uint8_t*)&msg_to_sent, sizeof(msg_to_sent)) == ESP_OK);
+    bool result = esp_now_send(QuickESPNow::Peer_list[key].peer_addr, (uint8_t*)&msg_to_sent, sizeof(msg_to_sent)) == ESP_OK;
 
     bool success = (result && msg_recved);
     msg_recved = false;
+
+    esp_now_del_peer(QuickESPNow::Peer_list[key].peer_addr);
     return success;
 }
 
