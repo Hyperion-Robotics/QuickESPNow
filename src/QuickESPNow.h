@@ -201,26 +201,26 @@ class QuickESPNow {
      * @param   size The size of the array
      */
     template<typename T> 
-    bool Send(const int id, T* msg, int size); // method for sending arrays data 
+    bool Send(const int id, T* msg, int size);  
 
-    // /**
-    //  * @brief   Method for sending non-pointers/non-arrays  
-    //  * @tparam T The type of the array elements
-    //  * @param   group The group of peers
-    //  * @param   msg The message to be sent
-    //  */
-    // template<typename T> 
-    // bool Send(const group_MAC group, const T msg);
+    /**
+     * @brief   Method for sending non-pointers/non-arrays  
+     * @tparam T The type of the array elements
+     * @param   group The group of peers
+     * @param   msg The message to be sent
+     */
+    template<typename T> 
+    bool Send(const MAC peer, const T msg, int size);
 
-    // /**
-    //  * @brief   Method for sending arrays  
-    //  * @tparam T The type of the array elements
-    //  * @param   id Peers's setted ID
-    //  * @param   msg The message to be sent
-    //  * @param   size The size of the array
-    //  */
-    // template<typename T> 
-    // bool Send(const group_MAC group, T* msg, int size); // method for sending arrays data 
+    /**
+     * @brief   Method for sending arrays  
+     * @tparam T The type of the array elements
+     * @param   id Peers's setted ID
+     * @param   msg The message to be sent
+     * @param   size The size of the array
+     */
+    template<typename T> 
+    bool Send(const MAC* group, T* msg, int size); // method for sending arrays data 
 
     
     /**
@@ -358,19 +358,9 @@ bool QuickESPNow::Send(const int id, T msg) {
         return false;
     }
 
-    // // Check if the peer exists
-    // if (!esp_now_is_peer_exist(QuickESPNow::Peers_MAC[key])) {
-    //     return false;
-    // }
-
     if(!isKnownMAC(QuickESPNow::Peer_list[key].peer_addr)){
         return false;
     }
-
-    // esp_now_peer_info_t temp_peer;
-    // if (esp_now_get_peer(QuickESPNow::Peers_MAC[key], &temp_peer) != ESP_OK) {
-    //     return false;
-    // }
 
     if (esp_now_add_peer(&QuickESPNow::Peer_list[key]) != ESP_OK) {
         return false;
@@ -382,7 +372,6 @@ bool QuickESPNow::Send(const int id, T msg) {
 
     msg_struct msg_to_sent;
 
-    
     if constexpr (std::is_same<T, int>::value){
         msg_to_sent.type = INT;
     }else if constexpr (std::is_same<T, short>::value){
@@ -403,7 +392,7 @@ bool QuickESPNow::Send(const int id, T msg) {
         msg_to_sent.type = UNKNOWN;
     }
 
-    msg_to_sent.size = 0;
+    msg_to_sent.size = 1;
     msg_to_sent.data = (void*)(msg);
 
     bool result = esp_now_send(QuickESPNow::Peer_list[key].peer_addr, (uint8_t*)&msg_to_sent, sizeof(msg_to_sent)) == ESP_OK;
@@ -435,11 +424,6 @@ bool QuickESPNow::Send(const int id, T* msg, int size) {
         return false;
     }
 
-    // esp_now_peer_info_t temp_peer;
-    // if (esp_now_get_peer(QuickESPNow::Peers_MAC[key], &temp_peer) != ESP_OK) {
-    //     return false;
-    // }
-
     if (esp_now_add_peer(&QuickESPNow::Peer_list[key]) != ESP_OK) {
         return false;
     }
@@ -449,7 +433,6 @@ bool QuickESPNow::Send(const int id, T* msg, int size) {
     }
 
     msg_struct msg_to_sent;
-    void* data;
     
     if constexpr (std::is_same<T, int>::value){
         msg_to_sent.type = INT;
@@ -471,8 +454,8 @@ bool QuickESPNow::Send(const int id, T* msg, int size) {
     
     msg_to_sent.size = size;
    
-   for(int i = 0; i < size; i++){
-       msg_to_sent.data_array[i] = (void*)(msg[i]);
+    for(int i = 0; i < size; i++){
+        msg_to_sent.data_array[i] = (void*)(msg[i]);
     }
     
     // Send the message
@@ -484,6 +467,89 @@ bool QuickESPNow::Send(const int id, T* msg, int size) {
     esp_now_del_peer(QuickESPNow::Peer_list[key].peer_addr);
     return success;
 }
+
+
+// template<typename T> 
+// bool QuickESPNow::Send(const esp_now_peer_info peer, const T msg){
+//     if (esp_now_add_peer(&peer) != ESP_OK) {
+//         return false;
+//     }
+
+//     msg_struct msg_to_sent;
+    
+//     if constexpr (std::is_same<T, int>::value){
+//         msg_to_sent.type = INT;
+//     }else if constexpr (std::is_same<T, short>::value){
+//         msg_to_sent.type = SHORT;
+//     }else if constexpr (std::is_same<T, long>::value){
+//         msg_to_sent.type = LONG;
+//     }else if constexpr (std::is_same<T, float>::value){
+//         msg_to_sent.type = FLOAT;
+//     }else if constexpr (std::is_same<T, double>::value){
+//         msg_to_sent.type = DOUBLE;
+//     }else if constexpr (std::is_same<T, char>::value){
+//         msg_to_sent.type = CHAR;
+//     }else if constexpr (std::is_same<T, bool>::value){
+//         msg_to_sent.type = BOOL;
+//     }else{
+//         msg_to_sent.type = UNKNOWN;
+//     }
+    
+//     msg_to_sent.size = 1;
+   
+//     msg_to_sent.data = (void*)(msg);
+    
+//     // Send the message
+//     bool result = esp_now_send(peer.peer_addr, (uint8_t*)&msg_to_sent, sizeof(msg_to_sent)) == ESP_OK;
+
+//     bool success = (result && msg_recved);
+//     msg_recved = false;
+
+//     esp_now_del_peer(peer.peer_addr);
+//     return success;
+// }
+
+// template<typename T> 
+// bool QuickESPNow::Send(const esp_now_peer_info peer, T* msg, int size){
+//     if (esp_now_add_peer(&peer) != ESP_OK) {
+//         return false;
+//     }
+
+//     msg_struct msg_to_sent;
+    
+//     if constexpr (std::is_same<T, int>::value){
+//         msg_to_sent.type = INT;
+//     }else if constexpr (std::is_same<T, short>::value){
+//         msg_to_sent.type = SHORT;
+//     }else if constexpr (std::is_same<T, long>::value){
+//         msg_to_sent.type = LONG;
+//     }else if constexpr (std::is_same<T, float>::value){
+//         msg_to_sent.type = FLOAT;
+//     }else if constexpr (std::is_same<T, double>::value){
+//         msg_to_sent.type = DOUBLE;
+//     }else if constexpr (std::is_same<T, char>::value){
+//         msg_to_sent.type = CHAR;
+//     }else if constexpr (std::is_same<T, bool>::value){
+//         msg_to_sent.type = BOOL;
+//     }else{
+//         msg_to_sent.type = UNKNOWN;
+//     }
+    
+//     msg_to_sent.size = size;
+   
+//     for(int i = 0; i < size; i++){
+//         msg_to_sent.data_array[i] = (void*)(msg[i]);
+//     }
+    
+//     // Send the message
+//     bool result = esp_now_send(peer.peer_addr, (uint8_t*)&msg_to_sent, sizeof(msg_to_sent)) == ESP_OK;
+
+//     bool success = (result && msg_recved);
+//     msg_recved = false;
+
+//     esp_now_del_peer(peer.peer_addr);
+//     return success;
+// }
 
 template<typename T>
 T QuickESPNow::read(){
