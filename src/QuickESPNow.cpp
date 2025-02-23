@@ -139,7 +139,7 @@ void QuickESPNow::addPeer(int id, uint8_t* Peers_MAC, int Ch, wifi_interface_t m
         this->setup_errors[CHANNEL_OUT_OF_RANGRE] = CHANNEL_OUT_OF_RANGRE; 
     }
 
-    if (esp_now_is_peer_exist(Peers_MAC)) {
+    if (isKnownMAC(Peers_MAC)) {
         this->setup_errors[ADDED_USED_PEER_WARNING] = ADDED_USED_PEER_WARNING; 
     }
 
