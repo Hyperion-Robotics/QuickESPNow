@@ -44,19 +44,26 @@ typedef struct {
 } msg_struct;
 
 /**
- * @brief   Create a struct that contains the MAC addresses for multicasting
+ * @brief   Create a variable that contains a MAC address
  */
-typedef struct {
-    uint8_t** MACS;
-} group_MAC;
+typedef uint8_t MAC[MAC_LENGTH];
 
 /**
- * @brief   Create a struct that contains ids for multicasting
- * @warning The ids must be given with the .addPeer method or it will fail so an unkown id will be skipped
+ * @brief   Create an array that contains ids for multicasting
  */
-typedef struct{
-    int* ids;
-} group_ids;
+typedef int* group_ids;
+
+/**
+//  * @brief   Create a struct that contains a group of MAC addresses
+//  * @warning A group should contain MAC's of devices that are in the same channel
+//  */
+// typedef struct {
+//     MAC* macs;
+//     bool* encryption;
+//     int* channels;
+//     int size;
+// } MAC_group;
+
 
 /**
  * @brief Function to set data parameters in the data structure.
