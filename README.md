@@ -176,6 +176,7 @@ void loop() {
 - Resolved issues with sending messages to peers on channels other than channel 1.
 - Fixed encryption issues to ensure proper data security.
 - Fixed the unknown variable type sending
+- Fixed compilation errors on ESP32 board manager version 3.x.x, ensuring full compatibility.
 
 ## Warnings
 
@@ -209,3 +210,4 @@ SOFTWARE.
 
 The author of this software shall not be held liable for any damages, liabilities, or legal consequences
 arising from the use, misuse, or inability to use the software.
+
