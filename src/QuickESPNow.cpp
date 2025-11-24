@@ -12,66 +12,34 @@ void QuickESPNow::getEspMAC(uint8_t* MAC){
     getSTRINGtoMAC(WiFi.macAddress(), MAC);
 }
 
-void QuickESPNow::getNumberOfALLPeers(esp_now_peer_num_t *peer_num){
-    if(esp_now_get_peer_num(peer_num) != ESP_OK){
-        setup_errors[GET_NUMBER_OF_PEERS_ERROR] = GET_NUMBER_OF_PEERS_ERROR;
-    }
+
+
+#if ESP_ARDUINO_VERSION >= ESP_ARDUINO_VERSION_VAL(3, 0, 0)
+void QuickESPNow::OnDataSent(const esp_now_send_info_t *tx_info, esp_now_send_status_t status){
+    Serial.print("\r\nLast Packet Send Status:\t");
+    Serial.println(status == ESP_NOW_SEND_SUCCESS ? "Delivery Success" : "Delivery Fail");
 }
-
-int QuickESPNow::getNumberOfNonEncryptedPeers(){
-    esp_now_peer_num_t peer_num;
-    if(esp_now_get_peer_num(&peer_num) != ESP_OK){
-        setup_errors[GET_NUMBER_OF_PEERS_ERROR] = GET_NUMBER_OF_PEERS_ERROR;
-    }
-
-    return (peer_num.total_num - peer_num.encrypt_num);
-}
-
-int QuickESPNow::getNumberOfEncryptedPeers(){
-    esp_now_peer_num_t peer_num;
-    if(esp_now_get_peer_num(&peer_num) != ESP_OK){
-        setup_errors[GET_NUMBER_OF_PEERS_ERROR] = GET_NUMBER_OF_PEERS_ERROR;
-    }
-
-    return peer_num.encrypt_num;
-}
-
-
+#else
 void QuickESPNow::OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status){
-    msg_recved = (status == ESP_NOW_SEND_SUCCESS);
+    Serial.print("\r\nLast Packet Send Status:\t");
+    Serial.println(status == ESP_NOW_SEND_SUCCESS ? "Delivery Success" : "Delivery Fail");
 }
+#endif
 
 #if ESP_ARDUINO_VERSION >= ESP_ARDUINO_VERSION_VAL(3, 0, 0)
 void QuickESPNow::OnDataRecv(const esp_now_recv_info_t *info, const uint8_t *incomingData, int len) {
-    if(QuickESPNow::verify_peers && !isKnownMAC(info->src_addr)){
-        return;
-    }
     msg_struct receivedData;
     memcpy(&receivedData, incomingData, sizeof(receivedData));
     QuickESPNow::recieved_msgs.add(&receivedData);
 }
 #elif ESP_ARDUINO_VERSION == ESP_ARDUINO_VERSION_VAL(2, 0, 17)
 void QuickESPNow::OnDataRecv(const uint8_t *mac_addr, const uint8_t *incomingData, int len) {
-    if(QuickESPNow::verify_peers && !isKnownMAC(mac_addr)){
-        return;
-    }
     msg_struct receivedData;
     memcpy(&receivedData, incomingData, sizeof(receivedData));
     QuickESPNow::recieved_msgs.add(&receivedData);
 }
 #endif
 uint8_t QuickESPNow::Local_MAC[MAC_LENGTH];
-
-volatile bool QuickESPNow::msg_recved = false;
-
-bool QuickESPNow::verify_peers = false;
-
-int QuickESPNow::id_counter = 0;
-
-// uint8_t** QuickESPNow::Peers_MAC;
-
-esp_now_peer_info* QuickESPNow::Peer_list;
-
 
 Msg_Queue QuickESPNow::recieved_msgs;
 /***********************************************************************/
@@ -81,17 +49,15 @@ QuickESPNow::QuickESPNow(const COMMUNICATION communication, const int peers_crow
     if(communication == SENDER || communication == RECEIVER || communication == TWO_WAY_COMMUNICATION){
         this->ESP_COM = communication;
     }else{
-        this->setup_errors[ESP_NOW_COMMUNICATION_SETUP_ERROR] = ESP_NOW_COMMUNICATION_SETUP_ERROR; 
+        this->setup_errors[this->error_counter] = ESP_NOW_COMMUNICATION_SETUP_ERROR; 
+        this->error_counter++;
     }
 
     this->ids = (int*)malloc(peers_crowd*sizeof(int));
-
-    QuickESPNow::Peer_list = (esp_now_peer_info*)malloc(peers_crowd*sizeof(esp_now_peer_info));
-
-    // QuickESPNow::Peers_MAC = (uint8_t**)malloc(peers_crowd*sizeof(uint8_t*));
-    // for(int i=0; i<peers_crowd; i++){
-    //     QuickESPNow::Peer_list[i].peer_addr = (uint8_t*)malloc(MAC_LENGTH*sizeof(uint8_t));
-    // }
+    this->Peers_MAC = (uint8_t**)malloc(peers_crowd*sizeof(uint8_t*));
+    for(int i=0; i<MAC_LENGTH; i++){
+        this->Peers_MAC[i] = (uint8_t*)malloc(MAC_LENGTH*sizeof(uint8_t));
+    }
 
     this->Encryption = false;
 
@@ -102,22 +68,20 @@ QuickESPNow::QuickESPNow(const COMMUNICATION communication, const int peers_crow
     if(communication == SENDER || communication == RECEIVER || communication == TWO_WAY_COMMUNICATION){
         this->ESP_COM = communication;
     }else{
-        this->setup_errors[ESP_NOW_COMMUNICATION_SETUP_ERROR] = ESP_NOW_COMMUNICATION_SETUP_ERROR;
+        this->setup_errors[this->error_counter] = ESP_NOW_COMMUNICATION_SETUP_ERROR;
+        this->error_counter++;
     }
 
     this->ids = (int*)malloc(peers_crowd*sizeof(int));
-
-
-    QuickESPNow::Peer_list = (esp_now_peer_info*)malloc(peers_crowd*sizeof(esp_now_peer_info));
-    // QuickESPNow::Peers_MAC = (uint8_t**)malloc(peers_crowd*sizeof(uint8_t*));
-    // for(int i=0; i<peers_crowd; i++){
-    //     QuickESPNow::Peer_list[i].peer_addr = (uint8_t*)malloc(MAC_LENGTH*sizeof(uint8_t));
-    // }
+    this->Peers_MAC = (uint8_t**)malloc(peers_crowd*sizeof(uint8_t*));
+    for(int i=0; i<MAC_LENGTH; i++){
+        this->Peers_MAC[i] = (uint8_t*)malloc(MAC_LENGTH*sizeof(uint8_t));
+    }
 
     this->Encryption = true;
 
     memcpy(QuickESPNow::Local_MAC, new_local_MAC, MAC_LENGTH);
-    
+
     if(this->PMK_key == nullptr){
         this->PMK_key = (char*)malloc((ENCRYPTION_KEY_LENGTH + 1) * sizeof(char));
     }
@@ -127,7 +91,8 @@ QuickESPNow::QuickESPNow(const COMMUNICATION communication, const int peers_crow
         strcpy(this->PMK_key, new_PMK_key);
     } else {
         // Handle memory allocation failure
-        this->setup_errors[MEMORY_ALLOCATION_ERROR] = MEMORY_ALLOCATION_ERROR;
+        this->setup_errors[this->error_counter] = MEMORY_ALLOCATION_ERROR;
+        this->error_counter++;
     }
 }
 /***************************************/
@@ -135,34 +100,29 @@ QuickESPNow::QuickESPNow(const COMMUNICATION communication, const int peers_crow
 /**************Starting of the espnow communication**************/
 void QuickESPNow::addPeer(int id, uint8_t* Peers_MAC, int Ch, wifi_interface_t mode){
 
-    if(Ch < 0 || 14 < Ch){
-        this->setup_errors[CHANNEL_OUT_OF_RANGRE] = CHANNEL_OUT_OF_RANGRE; 
+    if(Ch < 0 || 13 < Ch){
+        this->setup_errors[this->error_counter] = CHANNEL_OUT_OF_RANGRE; 
+        this->error_counter++;
     }
 
-    if (isKnownMAC(Peers_MAC)) {
-        this->setup_errors[ADDED_USED_PEER_WARNING] = ADDED_USED_PEER_WARNING; 
-    }
+    this->ids[this->id_counter] = id;
+    memcpy(this->Peers_MAC[this->id_counter], Peers_MAC, MAC_LENGTH);
+    this->id_counter++;
 
-    this->ids[QuickESPNow::id_counter] = id;
-    // memcpy(QuickESPNow::Peer_list[QuickESPNow::id_counter].peer_addr, Peers_MAC, MAC_LENGTH);
-    
     // Initialize the peerInfo structure
-    // esp_now_peer_info_t peerInfo;
-    // QuickESPNow::Peer_list[QuickESPNow::id_counter] = peerInfo;
-    memset(&QuickESPNow::Peer_list[QuickESPNow::id_counter], 0, sizeof(esp_now_peer_info_t));  // Properly zero-initialize
-    
-    memcpy(QuickESPNow::Peer_list[QuickESPNow::id_counter].peer_addr, Peers_MAC, MAC_LENGTH);
-    QuickESPNow::Peer_list[QuickESPNow::id_counter].channel = 1;  
-    QuickESPNow::Peer_list[QuickESPNow::id_counter].encrypt = false;
-    QuickESPNow::Peer_list[QuickESPNow::id_counter].ifidx = WIFI_IF_STA;
+    esp_now_peer_info_t peerInfo = {};
+    memcpy(peerInfo.peer_addr, Peers_MAC, MAC_LENGTH);
+    peerInfo.channel = Ch;  
+    peerInfo.encrypt = false;
+    peerInfo.ifidx = mode;  // Use station interface (most common for ESP-NOW)
 
-
-    QuickESPNow::id_counter++;
-    
-
-    // if (esp_now_add_peer(&peerInfo) != ESP_OK) {
-    //     this->setup_errors[ADD_PEER_INITIALIZATION_ERROR] = ADD_PEER_INITIALIZATION_ERROR; 
-    // }
+    // Add receiver as peer        
+    if (esp_now_add_peer(&peerInfo) != ESP_OK) {
+        Serial.println("[Error] Failed to add peer");
+        return;
+    }else{
+        Serial.println("[SUCCESS] peer has been added succesfuly");
+    }
 }
 
 
@@ -170,62 +130,59 @@ void QuickESPNow::addPeer(int id, uint8_t* Peers_MAC, int Ch, wifi_interface_t m
 
 
 void QuickESPNow::addPeer(int id, uint8_t* Peers_MAC, int Ch, wifi_interface_t mode, char* LMK_keys_array){
-    if(Ch < 0 || 14 < Ch){
-        this->setup_errors[CHANNEL_OUT_OF_RANGRE] = CHANNEL_OUT_OF_RANGRE; 
+    if(Ch < 0 || 13 < Ch){
+        this->setup_errors[this->error_counter] = CHANNEL_OUT_OF_RANGRE; 
+        this->error_counter++;
     }
 
-    if (esp_now_is_peer_exist(Peers_MAC)) {
-        this->setup_errors[ADDED_USED_PEER_WARNING] = ADDED_USED_PEER_WARNING; 
-    }
+    this->ids[this->id_counter] = id;
+    memcpy(this->Peers_MAC[this->id_counter], Peers_MAC, MAC_LENGTH);
+    this->id_counter++;
 
-    this->ids[QuickESPNow::id_counter] = id;    
     // Initialize the peerInfo structure
-    // esp_now_peer_info_t peerInfo;
-    memset(&QuickESPNow::Peer_list[QuickESPNow::id_counter], 0, sizeof(esp_now_peer_info_t));
-    memcpy(QuickESPNow::Peer_list[QuickESPNow::id_counter].peer_addr, Peers_MAC, MAC_LENGTH);
-    QuickESPNow::Peer_list[QuickESPNow::id_counter].channel = Ch;  
-    QuickESPNow::Peer_list[QuickESPNow::id_counter].encrypt = true;
-    QuickESPNow::Peer_list[QuickESPNow::id_counter].ifidx = mode;  // Use station interface (most common for ESP-NOW)
-    
+    esp_now_peer_info_t peerInfo = {};
+    memcpy(peerInfo.peer_addr, Peers_MAC, MAC_LENGTH);
+    peerInfo.channel = Ch;  
+    peerInfo.encrypt = false;
+    peerInfo.ifidx = mode;  // Use station interface (most common for ESP-NOW)
+
     //Set the receiver device LMK key
     for (uint8_t i = 0; i < 16; i++) {
-        QuickESPNow::Peer_list[QuickESPNow::id_counter].lmk[i] = LMK_keys_array[i];
+        peerInfo.lmk[i] = LMK_keys_array[i];
     }
-    
-    
-    QuickESPNow::id_counter++;
-    // // Add receiver as peer        
-    // if (esp_now_add_peer(&peerInfo) != ESP_OK){
-    //     return;
-    // }
+
+
+    // Add receiver as peer        
+    if (esp_now_add_peer(&peerInfo) != ESP_OK){
+        Serial.println("Failed to add peer");
+        return;
+    }else{
+        Serial.println("[SUCCESS] peer has been added succesfuly");
+    }
 }
 
 
 void QuickESPNow::addPeer(int id, esp_now_peer_info_t* Peer){
-    this->ids[QuickESPNow::id_counter] = id;
-
-    memcpy(&QuickESPNow::Peer_list[QuickESPNow::id_counter], Peer, MAC_LENGTH);
-    QuickESPNow::id_counter++;
+    this->ids[this->id_counter] = id;
+    memcpy(this->Peers_MAC[this->id_counter], Peer->peer_addr, MAC_LENGTH);
+    this->id_counter++;
 
     // Add receiver as peer        
-    // if (esp_now_add_peer(Peer) != ESP_OK){
-    //     return;
-    // }
+    if (esp_now_add_peer(Peer) != ESP_OK){
+        Serial.println("Failed to add peer");
+        return;
+    }else{
+        Serial.println("[SUCCESS] peer has been added succesfuly");
+    }
 }
 
-void QuickESPNow::peerVerification(bool verify){
-    verify_peers = verify;
-}
-
-void QuickESPNow::begin(wifi_mode_t mode){
-    // Set the WiFi mode (default: STA)
-    WiFi.mode(mode);
-
-    delay(100);
-
+void QuickESPNow::begin(){
+    // Set the WiFi module to station mode
+    WiFi.mode(WIFI_STA);
 
     if (esp_now_init() != ESP_OK) {
-        this->setup_errors[ESP_NOW_INITIALIZATION_ERROR] = ESP_NOW_INITIALIZATION_ERROR; 
+        this->setup_errors[this->error_counter] = ESP_NOW_INITIALIZATION_ERROR; 
+        this->error_counter++;
     }
 
     // Setup communication based on mode
@@ -243,30 +200,27 @@ void QuickESPNow::begin(wifi_mode_t mode){
             break;
     }
 
+
+    // Read the old MAC
+    Serial.print("[OLD] ESP32 Board MAC Address:  ");
+    Serial.println(WiFi.macAddress());
+
     delay(100);
 
-    switch (mode) {
-        case WIFI_STA:
-            esp_wifi_set_mac(WIFI_IF_STA, this->Local_MAC);
-            break;
-        case WIFI_AP:
-            esp_wifi_set_mac(WIFI_IF_AP, this->Local_MAC);
-            break;
-        case WIFI_AP_STA:
-            esp_wifi_set_mac(WIFI_IF_STA, this->Local_MAC);
-            esp_wifi_set_mac(WIFI_IF_AP, this->Local_MAC);
-            break;
-        default:
-            esp_wifi_set_mac(WIFI_IF_STA, this->Local_MAC);
-            break;
-    }
+    // Set new MAC
+    esp_wifi_set_mac(WIFI_IF_STA, this->Local_MAC);
 
     delay(100);
     
+    Serial.print("\r[NEW] ESP32 Board MAC Address:  ");
+    Serial.println(WiFi.macAddress());
+
     // Verify that the new MAC is set correctly
 
     if (!WiFi.macAddress().equals(getMACtoSTRING(this->Local_MAC))) {
-        this->setup_errors[NEW_MAC_INITIALIZATION_ERROR] = NEW_MAC_INITIALIZATION_ERROR;
+        Serial.println("\r[Error] Failed to change MAC");
+        this->setup_errors[this->error_counter] = NEW_MAC_INITIALIZATION_ERROR;
+        this->error_counter++;
     }
 
     if(this->Encryption){
@@ -287,26 +241,18 @@ void QuickESPNow::setChannel(int ch){
 }
 /**************Checking for istalisation errors**************/
 bool QuickESPNow::FAIL_CHECK() {
-    bool error_encountered = false;
-    for(int i = 0; i < SETTUP_ERRORS; i++) {
+    if(this->error_counter == 0) {
+        Serial.println("\r[SUCCESS] THERE WERE NO INITIALIZATION ERROR");
+        return false;
+    }
+    for(int i = 0; i < this->error_counter; i++) {
         if(this->setup_errors[i]==ESP_NOW_INITIALIZATION_ERROR) Serial.println("\r[Error] initializing ESP-NOW");
         else if(this->setup_errors[i]==ESP_NOW_COMMUNICATION_SETUP_ERROR ) Serial.println("\r[Error] in the consructors communication parameter");
         else if(this->setup_errors[i]==CHANNEL_OUT_OF_RANGRE) Serial.println("\r[Error] in the value of the channel (channel ranges 0-13)");        
         else if(this->setup_errors[i]==NEW_MAC_INITIALIZATION_ERROR) Serial.println("\r[Error] setting new MAC address");
         else if(this->setup_errors[i]==ADD_PEER_INITIALIZATION_ERROR) Serial.println("\r[Error] adding peer");
         else if(this->setup_errors[i]==MEMORY_ALLOCATION_ERROR) Serial.println("\r[Error] allocating memory");
-        else if(this->setup_errors[i]==ADDED_USED_PEER_WARNING) Serial.println("\r[Warning] added a peer that has already been added");
-        
-        if(this->setup_errors[i] != NO_ERROR) {
-            error_encountered = true;
-        }
     }
-    
-    if(!error_encountered) {
-        Serial.println("\r[SUCCESS] THERE WERE NO INITIALIZATION ERROR");
-        return false;
-    }
-
     Serial.println();
     return true;
 }
@@ -323,31 +269,6 @@ bool QuickESPNow::isArray() const{
 
 MSG_VARIABLE_TYPE QuickESPNow::data_type() const{
     return QuickESPNow::recieved_msgs.data_type();
-}
-
-bool QuickESPNow::isPeer(const uint8_t* MAC){
-    esp_now_peer_info_t peer;
-    return esp_now_get_peer(MAC, &peer) == ESP_OK;
-}
-
-bool QuickESPNow::isKnownMAC(const uint8_t* MAC){
-    for(int i = 0; i < QuickESPNow::id_counter; i++){
-        if(memcmp(MAC, QuickESPNow::Peer_list[i].peer_addr, 6) == 0){
-            return true;
-        }
-    }
-    
-    return false;
-}
-
-int QuickESPNow::getPeerID(const uint8_t* MAC){
-    for(int i = 0; i < QuickESPNow::id_counter; i++){
-        if(memcmp(MAC, QuickESPNow::Peer_list[i].peer_addr, 6) == 0){
-            return this->ids[QuickESPNow::id_counter];
-        }
-    }
-
-    return -1;
 }
 /********************************************************************/
 
@@ -370,19 +291,21 @@ void QuickESPNow::setWiFi_to_APSTA() {
 
 QuickESPNow::~QuickESPNow(){
     QuickESPNow::recieved_msgs.~Msg_Queue();
-    
-    // for(int i=0; i<QuickESPNow::id_counter; i++){
-    //     esp_now_del_peer(QuickESPNow::Peer_list[i].peer_addr);
-    //     delay(10);
-    // }
-    esp_now_deinit();
-
-    free(QuickESPNow::Peer_list);
+    for(int i=0; i<this->id_counter; i++){
+        free(this->Peers_MAC[i]);
+    }
+    free(this->Peers_MAC);
     free(this->PMK_key);
     free(ids);
+
+    for(int i=0; i<this->id_counter; i++){
+        esp_now_del_peer(this->Peers_MAC[i]);
+        delay(10);
+    }
+    esp_now_deinit();
     
     QuickESPNow::recieved_msgs.~Msg_Queue();
-    // QuickESPNow::recieved_msgs = Msg_Queue();
+    QuickESPNow::recieved_msgs = Msg_Queue();
 }
 
 

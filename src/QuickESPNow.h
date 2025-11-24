@@ -42,7 +42,12 @@ class QuickESPNow {
      * @param   mac_addr MAC address of the peer to which the message was sent.
      * @param   status Status of the sent message (e.g., success or failure).
      */
-    static void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status);
+    
+    #if ESP_ARDUINO_VERSION >= ESP_ARDUINO_VERSION_VAL(3, 0, 0)
+        static void OnDataSent(const esp_now_send_info_t *tx_info, esp_now_send_status_t status);
+    #else
+        static void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status);
+    #endif 
     
     #if ESP_ARDUINO_VERSION >= ESP_ARDUINO_VERSION_VAL(3, 0, 0)
         /**
@@ -61,27 +66,25 @@ class QuickESPNow {
          */
         static void OnDataRecv(const uint8_t *mac_addr, const uint8_t *incomingData, int len);
     #else
-        #error unsapported board version
+        #error unsapported board 
     #endif
 
     /************************************************************************/
 
-    INITIALIZATION_ERRORS setup_errors[SETTUP_ERRORS + 1];  ///< Array to store initialization error statuses.
+    int error_counter = 0;                              ///< Counter to track the number of errors during initialization.
+    INITIALIZATION_ERRORS setup_errors[SETTUP_ERRORS];  ///< Array to store initialization error statuses.
     
 
     int ESP_COM;                                        ///< Variable to manage the communication type (sending, receiving, or both).
     static uint8_t Local_MAC[MAC_LENGTH];               ///< Array to hold the local MAC address of the ESP.
     char* PMK_key = nullptr;                            ///< Pointer to hold the PMK encryption key for secure communication.
     
-    static int id_counter;                                 ///< Counter to assign unique IDs to peers.
+    int id_counter = 0;                                 ///< Counter to assign unique IDs to peers.
     int* ids;                                           ///< Pointer to an array storing IDs of peers.
     
-    // static uint8_t** Peers_MAC;                         ///< Pointer to a 2D array storing MAC addresses of peers.
-    static esp_now_peer_info* Peer_list;
+    uint8_t** Peers_MAC;                                ///< Pointer to a 2D array storing MAC addresses of peers.
     bool Encryption;                                    ///< Flag indicating whether encryption is enabled or not.
-
-    static volatile bool msg_recved;
-    static bool verify_peers;
+    char** LMK_key;                                     ///< Pointer to an array of LMK encryption keys for each peer.
 
   public:
     /********Constructors********/
@@ -107,7 +110,7 @@ class QuickESPNow {
     /**
      * @brief   Initializes the options set in the constructor
      */
-    void begin(wifi_mode_t mode = WIFI_STA);
+    void begin();
 
     /**
      * @brief   Changes the ESP's channel
@@ -144,15 +147,6 @@ class QuickESPNow {
     void addPeer(int id, esp_now_peer_info_t* Peer);
 
     /**
-     * @brief   Sets whether the received messages will be verified by MAC address.
-     * @param   verify A boolean value indicating the verification status.
-     *                 - true: Enable verification of received messages by MAC address.
-     *                 - false: Disable verification of received messages by MAC address.
-     * @note    When verification is enabled, the MAC address of the sender will be checked against known peers.
-     */
-    void peerVerification(bool verify);
-
-    /**
      * @brief   Set custom send callback function
      * @param   custom The function to be called when a message is sent
      */
@@ -168,7 +162,7 @@ class QuickESPNow {
      * @brief   Prints all the possible initialization errors
      * 
      * @return
-     *          - false : There were no errors
+     *          - true : There were no errors
      *          - true : There were errors
      */
     bool FAIL_CHECK();          // Check for initialization errors
@@ -191,7 +185,7 @@ class QuickESPNow {
      * @param   msg The message to be sent
      */
     template<typename T> 
-    bool Send(const int id, const T msg);
+    void Send(const int id, const T msg);
 
     /**
      * @brief   Method for sending arrays  
@@ -201,27 +195,7 @@ class QuickESPNow {
      * @param   size The size of the array
      */
     template<typename T> 
-    bool Send(const int id, T* msg, int size);  
-
-    /**
-     * @brief   Method for sending non-pointers/non-arrays  
-     * @tparam T The type of the array elements
-     * @param   group The group of peers
-     * @param   msg The message to be sent
-     */
-    template<typename T> 
-    bool Send(const MAC peer, const T msg, int size);
-
-    /**
-     * @brief   Method for sending arrays  
-     * @tparam T The type of the array elements
-     * @param   id Peers's setted ID
-     * @param   msg The message to be sent
-     * @param   size The size of the array
-     */
-    template<typename T> 
-    bool Send(const MAC* group, T* msg, int size); // method for sending arrays data 
-
+    void Send(const int id, T* msg, int size); // method for sending arrays data 
     
     /**
      * @brief       Method for recieving the non-pointers/non-arrays messages
@@ -268,22 +242,9 @@ class QuickESPNow {
      *          - DATA : The recieved message is type of data struct
      */
     MSG_VARIABLE_TYPE data_type() const;
-
-    static bool isPeer(const uint8_t* MAC);
-    
-    static bool isKnownMAC(const uint8_t* MAC);
     /********Msg sending and recieving methods********/
-    
-    /********Other utils********/
-    /**
-     * @brief   Get the peer's ID
-     * @param   MAC The peer's MAC adress
-     * 
-     * @return
-     *         - int : The peer's ID
-     */
-    int getPeerID(const uint8_t* MAC);
 
+    /********Other utils********/
     /**
      * @brief   Get the ESP's MAC adress 
      * 
@@ -297,28 +258,6 @@ class QuickESPNow {
      * @param   MAC The variable that will be assigned a pointer of the ESP's MAC adress
      */
     static void getEspMAC(uint8_t* MAC); 
-
-    /**
-     * @brief   Get the number of all peers
-     * @param   peer_num The variable that will be assigned the number of all peers
-     */
-    void getNumberOfALLPeers(esp_now_peer_num_t *peer_num);
-
-    /**
-     * @brief   Get the number of non-encrypted peers
-     * 
-     * @return
-     *         - int : The number of non-encrypted peers
-     */
-    int getNumberOfNonEncryptedPeers();
-
-    /**
-     * @brief   Get the number of encrypted peers
-     * 
-     * @return
-     *         - int : The number of encrypted peers
-     */
-    int getNumberOfEncryptedPeers();
 
     /**
      * @brief   Set WiFi mode to Station
@@ -343,10 +282,10 @@ class QuickESPNow {
 };
 
 template<typename T> 
-bool QuickESPNow::Send(const int id, T msg) {
+void QuickESPNow::Send(const int id, T msg) {
     bool id_exists = false;
     int key;
-    for(int i = 0; i<QuickESPNow::id_counter; i++){
+    for(int i = 0; i<this->id_counter; i++){
         if(this->ids[i]==id){
             id_exists = true;
             key = i;
@@ -355,23 +294,29 @@ bool QuickESPNow::Send(const int id, T msg) {
     }
     
     if(!id_exists){
-        return false;
+        Serial.println("[Fail] Unknown esp id");
+        return;
     }
 
-    if(!isKnownMAC(QuickESPNow::Peer_list[key].peer_addr)){
-        return false;
+    // Check if the peer exists
+    if (!esp_now_is_peer_exist(this->Peers_MAC[key])) {
+        Serial.println("[Error] Peer does not exist");
+        return;
     }
 
-    if (esp_now_add_peer(&QuickESPNow::Peer_list[key]) != ESP_OK) {
-        return false;
+    esp_now_peer_info_t temp_peer;
+    if (esp_now_get_peer(this->Peers_MAC[key], &temp_peer) != ESP_OK) {
+        Serial.println("[Error] Failed to get peer info");
+        return;
     }
 
-    if(WiFi.channel() != QuickESPNow::Peer_list[key].channel){
-        setChannel(QuickESPNow::Peer_list[key].channel);
+    if(WiFi.channel() != temp_peer.channel){
+        setChannel(temp_peer.channel);
     }
 
     msg_struct msg_to_sent;
 
+    
     if constexpr (std::is_same<T, int>::value){
         msg_to_sent.type = INT;
     }else if constexpr (std::is_same<T, short>::value){
@@ -392,23 +337,18 @@ bool QuickESPNow::Send(const int id, T msg) {
         msg_to_sent.type = UNKNOWN;
     }
 
-    msg_to_sent.size = 1;
+    msg_to_sent.size = 0;
     msg_to_sent.data = (void*)(msg);
 
-    bool result = esp_now_send(QuickESPNow::Peer_list[key].peer_addr, (uint8_t*)&msg_to_sent, sizeof(msg_to_sent)) == ESP_OK;
-
-    bool success = (result && msg_recved);
-    msg_recved = false;
-
-    esp_now_del_peer(QuickESPNow::Peer_list[key].peer_addr);
-    return success;
+    bool result = esp_now_send(this->Peers_MAC[key], (uint8_t*)&msg_to_sent, sizeof(msg_to_sent));
+    result == ESP_OK ? Serial.println("Successfully sent msg") : Serial.println("Failed to send msg");
 }
 
 template<typename T> 
-bool QuickESPNow::Send(const int id, T* msg, int size) {
+void QuickESPNow::Send(const int id, T* msg, int size) {
     bool id_exists = false;
     int key;
-    for(int i = 0; i<QuickESPNow::id_counter; i++){
+    for(int i = 0; i<this->id_counter; i++){
         if(this->ids[i]==id){
             id_exists = true;
             key = i;
@@ -417,22 +357,28 @@ bool QuickESPNow::Send(const int id, T* msg, int size) {
     }
     
     if(!id_exists){
-        return false;
+        Serial.println("[Fail] Unknown esp id");
+        return;
     }
 
-    if(!isKnownMAC(QuickESPNow::Peer_list[key].peer_addr)){
-        return false;
+    // Check if the peer exists
+    if (!esp_now_is_peer_exist(this->Peers_MAC[key])) {
+        Serial.println("[Error] Peer does not exist");
+        return;
     }
 
-    if (esp_now_add_peer(&QuickESPNow::Peer_list[key]) != ESP_OK) {
-        return false;
+    esp_now_peer_info_t temp_peer;
+    if (esp_now_get_peer(this->Peers_MAC[key], &temp_peer) != ESP_OK) {
+        Serial.println("[Error] Failed to get peer info");
+        return;
     }
 
-    if(WiFi.channel() != QuickESPNow::Peer_list[key].channel){
-        setChannel(QuickESPNow::Peer_list[key].channel);
+    if(WiFi.channel() != temp_peer.channel){
+        setChannel(temp_peer.channel);
     }
 
     msg_struct msg_to_sent;
+    void* data;
     
     if constexpr (std::is_same<T, int>::value){
         msg_to_sent.type = INT;
@@ -454,102 +400,14 @@ bool QuickESPNow::Send(const int id, T* msg, int size) {
     
     msg_to_sent.size = size;
    
-    for(int i = 0; i < size; i++){
-        msg_to_sent.data_array[i] = (void*)(msg[i]);
+   for(int i = 0; i < size; i++){
+       msg_to_sent.data_array[i] = (void*)(msg[i]);
     }
     
     // Send the message
-    bool result = esp_now_send(QuickESPNow::Peer_list[key].peer_addr, (uint8_t*)&msg_to_sent, sizeof(msg_to_sent)) == ESP_OK;
-
-    bool success = (result && msg_recved);
-    msg_recved = false;
-
-    esp_now_del_peer(QuickESPNow::Peer_list[key].peer_addr);
-    return success;
+    bool result = esp_now_send(this->Peers_MAC[key], (uint8_t*)&msg_to_sent, sizeof(msg_to_sent));
+    result == ESP_OK ? Serial.println("Successfully sent msg") : Serial.println("Failed to send msg");
 }
-
-
-// template<typename T> 
-// bool QuickESPNow::Send(const esp_now_peer_info peer, const T msg){
-//     if (esp_now_add_peer(&peer) != ESP_OK) {
-//         return false;
-//     }
-
-//     msg_struct msg_to_sent;
-    
-//     if constexpr (std::is_same<T, int>::value){
-//         msg_to_sent.type = INT;
-//     }else if constexpr (std::is_same<T, short>::value){
-//         msg_to_sent.type = SHORT;
-//     }else if constexpr (std::is_same<T, long>::value){
-//         msg_to_sent.type = LONG;
-//     }else if constexpr (std::is_same<T, float>::value){
-//         msg_to_sent.type = FLOAT;
-//     }else if constexpr (std::is_same<T, double>::value){
-//         msg_to_sent.type = DOUBLE;
-//     }else if constexpr (std::is_same<T, char>::value){
-//         msg_to_sent.type = CHAR;
-//     }else if constexpr (std::is_same<T, bool>::value){
-//         msg_to_sent.type = BOOL;
-//     }else{
-//         msg_to_sent.type = UNKNOWN;
-//     }
-    
-//     msg_to_sent.size = 1;
-   
-//     msg_to_sent.data = (void*)(msg);
-    
-//     // Send the message
-//     bool result = esp_now_send(peer.peer_addr, (uint8_t*)&msg_to_sent, sizeof(msg_to_sent)) == ESP_OK;
-
-//     bool success = (result && msg_recved);
-//     msg_recved = false;
-
-//     esp_now_del_peer(peer.peer_addr);
-//     return success;
-// }
-
-// template<typename T> 
-// bool QuickESPNow::Send(const esp_now_peer_info peer, T* msg, int size){
-//     if (esp_now_add_peer(&peer) != ESP_OK) {
-//         return false;
-//     }
-
-//     msg_struct msg_to_sent;
-    
-//     if constexpr (std::is_same<T, int>::value){
-//         msg_to_sent.type = INT;
-//     }else if constexpr (std::is_same<T, short>::value){
-//         msg_to_sent.type = SHORT;
-//     }else if constexpr (std::is_same<T, long>::value){
-//         msg_to_sent.type = LONG;
-//     }else if constexpr (std::is_same<T, float>::value){
-//         msg_to_sent.type = FLOAT;
-//     }else if constexpr (std::is_same<T, double>::value){
-//         msg_to_sent.type = DOUBLE;
-//     }else if constexpr (std::is_same<T, char>::value){
-//         msg_to_sent.type = CHAR;
-//     }else if constexpr (std::is_same<T, bool>::value){
-//         msg_to_sent.type = BOOL;
-//     }else{
-//         msg_to_sent.type = UNKNOWN;
-//     }
-    
-//     msg_to_sent.size = size;
-   
-//     for(int i = 0; i < size; i++){
-//         msg_to_sent.data_array[i] = (void*)(msg[i]);
-//     }
-    
-//     // Send the message
-//     bool result = esp_now_send(peer.peer_addr, (uint8_t*)&msg_to_sent, sizeof(msg_to_sent)) == ESP_OK;
-
-//     bool success = (result && msg_recved);
-//     msg_recved = false;
-
-//     esp_now_del_peer(peer.peer_addr);
-//     return success;
-// }
 
 template<typename T>
 T QuickESPNow::read(){
