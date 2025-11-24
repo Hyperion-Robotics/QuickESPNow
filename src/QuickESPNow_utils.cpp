@@ -18,7 +18,7 @@ void getSTRINGtoMAC(String text, uint8_t *new_mac){
     }
 }
 
-String getMACtoSTRING(const uint8_t *mac){
+String getMACtoSTRING(uint8_t *mac){
   // Create a String to store the MAC address
     String macString;
 
@@ -26,7 +26,7 @@ String getMACtoSTRING(const uint8_t *mac){
     for (int i = 0; i < MAC_LENGTH; i++) {
         // Convert the byte to a two-digit hexadecimal string
         char hexBuffer[3];
-        sprintf(hexBuffer, "%02X", mac[i]);
+        sprintf(hexBuffer, "%02X", *(mac+i));
 
         // Concatenate the hexadecimal string to the macString
         macString += hexBuffer;

@@ -44,28 +44,6 @@ typedef struct {
 } msg_struct;
 
 /**
- * @brief   Create a variable that contains a MAC address
- */
-typedef uint8_t MAC[MAC_LENGTH];
-
-/**
- * @brief   Create an array that contains ids for multicasting
- */
-typedef int* group_ids;
-
-/**
-//  * @brief   Create a struct that contains a group of MAC addresses
-//  * @warning A group should contain MAC's of devices that are in the same channel
-//  */
-// typedef struct {
-//     MAC* macs;
-//     bool* encryption;
-//     int* channels;
-//     int size;
-// } MAC_group;
-
-
-/**
  * @brief Function to set data parameters in the data structure.
  * @param new_struct Pointer to the data structure to be modified.
  * @param type The type of message to set.
@@ -81,7 +59,7 @@ void Set_Data_parameters(data *new_struct, char type, char new_char[], int new_i
  * @param mac Pointer to the MAC address.
  * @return String representation of the MAC address.
  */
-String getMACtoSTRING(const uint8_t *mac);
+String getMACtoSTRING(uint8_t *mac);
 
 /**
  * @brief Function to convert string to MAC address.
